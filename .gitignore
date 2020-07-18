@@ -1,0 +1,16 @@
+# System
+.DS_Store
+
+# IDE/Editor
+.ccls-cache
+.vscode
+
+# Build
+build
+build-clang
+build-gcc
+build-release
+.cache
+
+# Statically generated documentation
+site/
