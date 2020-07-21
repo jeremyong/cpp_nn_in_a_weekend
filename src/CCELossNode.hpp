@@ -32,6 +32,7 @@ public:
     }
 
     num_t accuracy() const;
+    num_t avg_loss() const;
     void reset_score();
 
 private:
@@ -46,6 +47,7 @@ private:
     num_t* last_input_;
     // Stores the last active classification in the target one-hot encoding
     size_t active_;
+    num_t cumulative_loss_{0.0};
     // Store running counts of correct and incorrect predictions
     size_t correct_   = 0;
     size_t incorrect_ = 0;

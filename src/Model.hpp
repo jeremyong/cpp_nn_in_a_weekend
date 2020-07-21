@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <fstream>
 #include <memory>
 #include <random>
 #include <string>
@@ -117,7 +118,17 @@ public:
     // seed is 0, a new random seed is chosen instead. Returns the seed used.
     rne_t::result_type init(rne_t::result_type seed = 0);
 
+    void train(Optimizer& optimizer);
+
+    [[nodiscard]] std::string const& name() const noexcept
+    {
+        return name_;
+    }
+
     void print() const;
+
+    void save(std::ofstream& out);
+    void load(std::ifstream& in);
 
 private:
     friend class Node;

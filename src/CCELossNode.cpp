@@ -67,6 +67,8 @@ void CCELossNode::forward(num_t* data)
         ++incorrect_;
     }
 
+    cumulative_loss_ += loss_;
+
     // Store the data pointer to compute gradients later
     last_input_ = data;
 }
@@ -93,7 +95,7 @@ void CCELossNode::reverse(num_t* data)
 
 void CCELossNode::print() const
 {
-    std::printf("Loss: %f\t%f%% correct\n", loss_, accuracy());
+    std::printf("Avg Loss: %f\t%f%% correct\n", avg_loss(), accuracy());
 }
 
 num_t CCELossNode::accuracy() const
@@ -101,9 +103,14 @@ num_t CCELossNode::accuracy() const
     return static_cast<num_t>(correct_)
            / static_cast<num_t>(correct_ + incorrect_);
 }
+num_t CCELossNode::avg_loss() const
+{
+    return cumulative_loss_ / static_cast<num_t>(correct_ + incorrect_);
+}
 
 void CCELossNode::reset_score()
 {
-    correct_   = 0;
-    incorrect_ = 0;
+    cumulative_loss_ = num_t{0.0};
+    correct_         = 0;
+    incorrect_       = 0;
 }
