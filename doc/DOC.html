@@ -105,7 +105,7 @@
 <h2 id="introduction">Introduction</h2>
 <p>Would you like to write a neural network from start to finish? Are you perhaps shaky on some of the fundamental concepts and derivations, such as categorical cross-entropy loss or backpropagation? Alternatively, would you like an introduction to machine learning without relying on “magical” frameworks that seem to perform AI miracles with only a few lines of code (and just as little intuition)? If so, this article was written for you.</p>
 <p>Deep learning as a technology and discipline has been booming. Nearly every facet of deep learning is teeming with progress and healthy competition to achieve state of the art performance and efficiency. It’s no surprise that resources tend to emphasize the “latest and greatest” in feats such as object recognition, natural language parsing, “deep fakes”, and more. In contrast, fewer resources expand as much on the practical <em>engineering</em> aspects of deep learning. That is, how should a deep learning framework be structured? How do you go about rolling your own infrastructure instead of relying on Keras, Pytorch, Tensorflow, or any of the other dominant frameworks? Whether you wish to write your own for learning purposes, or if you need to deploy a neural network on a constrained (i.e. embedded) device, there is plenty to be gained from authoring a neural network from scratch.</p>
-<p>The neural network outlined here is hosted on <a href="https://github.com/jeremyong/nn_in_a_weekend">github</a> and has enough abstractions to vaguely resemble a production network, without being overly engineered as to be indigestible in a sitting or two. The training and test data provided is the venerable <a href="http://yann.lecun.com/exdb/mnist/">MNIST</a> dataset of handwritten digits. While more exotic (and original) datasets exist, MNIST is chosen here because its sheer ubiquity guarantees you can find corresponding literature to help drive further experimentation, or troubleshoot when things go wrong.</p>
+<p>The neural network outlined here is hosted on <a href="https://github.com/jeremyong/cpp_nn_in_a_weekend">github</a> and has enough abstractions to vaguely resemble a production network, without being overly engineered as to be indigestible in a sitting or two. The training and test data provided is the venerable <a href="http://yann.lecun.com/exdb/mnist/">MNIST</a> dataset of handwritten digits. While more exotic (and original) datasets exist, MNIST is chosen here because its sheer ubiquity guarantees you can find corresponding literature to help drive further experimentation, or troubleshoot when things go wrong.</p>
 <h2 id="background">Background</h2>
 <p>This section serves as a moderately high-level description of the major mathematical underpinnings of neural networks and may be safely skipped by those who prefer to jump straight to the code.</p>
 <p>Suppose we have a task we would like a machine learning model to complete (e.g. recognizing handwritten digits). At a high level, we need to perform the following tasks:</p>
@@ -157,8 +157,8 @@
 <li>Differentiability - the gradient of our model’s output with respect to any given parameter indicates the <em>impact</em> of that parameter on the final result</li>
 </ol>
 <p>There are an infinite number of functions that fit this criteria, but here, we’ll use a simple feedforward network with a single hidden layer.</p>
-<p><img src="/home/jeremy/developer/nn_in_a_weekend/doc/e3d0e976d71535c548dc519a6e3335282a9174d4.svg" /></p>
-<p>A few quick notes regarding notation: a superscript of the form <span class="math inline">[i]</span> is used to denote the <span class="math inline">i</span>th layer. A subscript is used to denote a particular element within a layer or vector.</p>
+<p><img src="/home/jeremy/developer/nn_in_a_weekend/doc/219994768ec294ab99637a7747627aeebd998d41.svg" /></p>
+<p>A few quick notes regarding notation: a superscript of the form <span class="math inline">[i]</span> is used to denote the <span class="math inline">i</span>th layer. A subscript is used to denote a particular element within a layer or vector. The vector <span class="math inline">\mathbf{x}</span> is usually reserved for training samples, and the vector <span class="math inline">\mathbf{y}</span> is typically reserved for sample labels (i.e. the desired “answer” for a given sample). The vector <span class="math inline">\hat{\mathbf{y}}</span> is used to denote a model’s predicted labels for a given input.</p>
 <p>On the far left, we have the input layer with <span class="math inline">784</span> nodes corresponding to each of the 28 by 28 pixels in an individual sample. Each <span class="math inline">x_i^{(0)}</span> is a floating point value between 0 and 1 inclusive. Because the data is encoded with 8 bits of precision, there are 256 possible values for each input. Each of the 784 input values fan out to each of the nodes in the hidden layer without modification.</p>
 <p>In the center hidden layer, we have a variable number of nodes that each receive all 784 inputs, perform some processing, and fan out the result to the output nodes on the far right. That is, each node in the hidden layer transforms a <span class="math inline">\mathbb{R}^{784}</span> vector into a <span class="math inline">\mathbb{R}^n</span> vector. The simplest way to do this is with an <span class="math inline">n\times 784</span> matrix (treating inputs as column vectors). Modeling the hidden layer this way, each of the <span class="math inline">n</span> nodes in the hidden layer is associated with a single row in our <span class="math inline">\mathbb{R}^{n\times 784}</span> matrix. Each entry of this matrix is referred to as a <em>weight</em>.</p>
 <p>We still have two issues we need to address however. First, a matrix provides a linear mapping between two spaces, and linear maps take <span class="math inline">0</span> to <span class="math inline">0</span> (you can visualize such maps as planes through the origin). Thus, such fully-connected layers typically add a <em>bias</em> to each output node to turn the map into an affine map. This enables the model to respond zeroes in the input. Thus, the hidden layer as a whole has now both a weight matrix, and also a bias vector.</p>
@@ -230,10 +230,10 @@ for i in num_batches
 \begin{aligned}
 \mathrm{softmax}(\mathbf{z})_i &amp;= \frac{\exp{z_i}}{\sum_j \exp{z_j}} \\
 \frac{\partial \left(\mathrm{softmax}(\mathbf{z})_i\right)}{\partial z_k} &amp;=
-\begin{cases}
+\begin{dcases}
 \frac{\left(\sum_j\exp{z_j}\right)\exp{z_i} - \exp{2z_i}}{\left(\sum_j\exp{z_j}\right)^2}&amp; i = k \\
 \frac{-\exp{z_i}\exp{z_k}}{\left(\sum_j\exp{z_j}\right)^2}&amp; i \neq k
-\end{cases} \\
+\end{dcases} \\
 &amp;= \begin{cases}
 \mathrm{softmax}(\mathbf{z})_i\left(1 - \mathrm{softmax}(\mathbf{z})_i\right) &amp; i = k \\
 -\mathrm{softmax}(\mathbf{z})_i \mathrm{softmax}(\mathbf{z})_k &amp; i \neq k
@@ -749,7 +749,17 @@ z &amp; z &gt; 0
 <li>Divide by zero</li>
 </ul>
 <p>Loss of precision easily occurs when in a number of situations, such as subtracting two quantities of similar size, or adding and multiplying quantities with greatly different magnitudes. Floating point overflow and underflow occur typically when repeatedly performing an operation such that an accumulator explodes to <span class="math inline">\infty</span> or <span class="math inline">-\infty</span>. In this case, the use of <code>std::exp</code> is one operation that sticks out. We will not implement a stable softmax here, but the following identity can be used to improve its stability should you need it:</p>
-<p><span class="math display">\mathrm{softmax}(\mathbf{z} + \mathbf{C})_i = \mathrm{softmax}(\mathbf{z})_i, \forall i</span></p>
+<p><span class="math display">\mathrm{softmax}(\mathbf{z} + \mathbf{C})_i = \mathrm{softmax}(\mathbf{z})_i</span></p>
+<p>In this expression, <span class="math inline">\mathbf{C}</span> is a constant vector where all its elements are equal in value. Expanding the definition of softmax in the LHS gives:</p>
+<p><span class="math display">
+\begin{aligned}
+\mathrm{softmax}(\mathbf{z} + \mathbf{C})_i &amp;= \frac{\exp{(z_i + C)}}{\sum_i\exp{(z_i + C})} \\
+&amp;= \frac
+    {\exp{z_i}\exp{C}}
+    {\left(\sum_i\exp{z_i}\right)\exp C} \\
+&amp;= \mathrm{softmax}(\mathbf{z})_i &amp;&amp; \blacksquare
+\end{aligned}
+</span></p>
 <p>Thus, if we are considered about saturating <code>std::exp</code> with a large argument, we can simply set <span class="math inline">C</span> to be the additive inverse of the <span class="math inline">z_i</span> with the greatest magnitude within <span class="math inline">\mathbf{z}</span>. Performing this each time we apply softmax will usually maintain the arguments of the softmax within a reasonable range (unless elements of <span class="math inline">z_i</span> explode in opposite directions).</p>
 <p>As a practical implementor’s trick, it is possible to enable floating point exception traps to throw an exception when a <code>NaN</code> is generated in a floating point register. Using libc for example, we can trap floating point exceptions using</p>
 <div class="sourceCode" id="cb15"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true"></a><span class="pp">#include </span><span class="im">&lt;cfenv&gt;</span></span>
@@ -1009,7 +1019,7 @@ z &amp; z &gt; 0
 <p>As with the feedforward node, a pointer to the inputs to the node is preserved to compute gradients later. A bit of bookkeeping is also done so we can track accuracy and accumulate loss during batch. The derivative of the loss of an individual sample with respect to the inputs is also fairly straightforward.</p>
 <p><span class="math display">
 \begin{aligned}
-\frac{\partial J_{CE}}{\partial{y_i}} &amp;= \frac{\partial \left(-\sum_j y_j\log{\left(\max(y_j, \epsilon)\right)}\right)}{\partial \hat{y}_i} \\
+\frac{\partial J_{CE}}{\partial{\hat{y}_i}} &amp;= \frac{\partial \left(-\sum_j y_j\log{\left(\max(\hat{y}_j, \epsilon)\right)}\right)}{\partial \hat{y}_i} \\
 &amp;= -\frac{y_i}{\max(\hat{y}_i, 0)}
 \end{aligned}
 </span></p>
@@ -1027,7 +1037,7 @@ z &amp; z &gt; 0
 <span id="cb25-11"><a href="#cb25-11" aria-hidden="true"></a>        node-&gt;reverse(<span class="va">gradients_</span>.data());</span>
 <span id="cb25-12"><a href="#cb25-12" aria-hidden="true"></a>    }</span>
 <span id="cb25-13"><a href="#cb25-13" aria-hidden="true"></a>}</span></code></pre></div>
-<p>One thing to keep in mind here is that this implementation is <em>not</em> the most efficient implementation possible for a softmax layer feeding to a cross-entropy loss function by any stretch. The code and derivation here is completely general for arbitrary sample probability distributions. If, however, we can assume that the target distribution is one-hot encoded, then all gradients in this node will either be 0 or <span class="math inline">-1/y_k</span> where <span class="math inline">k</span> is the active label in the one-hot target. Upon substitution in the previous layer, it should be clear that important cancellations are possible that dramatically simplify the gradient computations in the softmax layer. Here’s the simplification, again assuming that the <span class="math inline">k</span>th index is the correct label:</p>
+<p>One thing to keep in mind here is that this implementation is <em>not</em> the most efficient implementation possible for a softmax layer feeding to a cross-entropy loss function by any stretch. The code and derivation here is completely general for arbitrary sample probability distributions. If, however, we can assume that the target distribution is one-hot encoded, then all gradients in this node will either be 0 or <span class="math inline">-1/\hat{y}_k</span> where <span class="math inline">k</span> is the active label in the one-hot target. Upon substitution in the previous layer, it should be clear that important cancellations are possible that dramatically simplify the gradient computations in the softmax layer. Here’s the simplification, again assuming that the <span class="math inline">k</span>th index is the correct label:</p>
 <p><span class="math display">
 \begin{aligned}
 \frac{\partial J_{CE}}{\partial \mathrm{softmax}(\mathbf{z})_i} &amp;= \frac{\partial J_{CE}}{\partial a_i}\sum_{j} \begin{cases}
@@ -1192,5 +1202,48 @@ Avg Loss: 0.292608  91.009998% correct</code></pre>
 <li>Pick a research paper you’re interested in and endeavor to implement it end to end.</li>
 </ul>
 <p>As you can see, the sky’s the limit and there is simply no end to the amount of work possible to improve a neural network’s ability to learn and make inferences. A good body of work is also there to improve tooling around data ingestion, model configuration serialization, automated testing, continuous learning in the cloud, etc. Crucially though, new research and development is constantly in the works in this ever-changing field. On top of studying deep learning as a discipline in and of itself, there is plenty of room for specialization in particular domains, be it computer vision, NLP, epidemiology, or something else. My hope is that for some of you, the neural network in a weekend may take the form of a neural network in a fulfilling career or lifetime.</p>
+<h4 id="further-reading">Further Reading</h4>
+<p>If you get a single book, <em>Deep Learning</em> (listed first in the following table) is highly recommended as a relatively self-complete text with cogent explanations written in a readable style. As you venture into attempting to perform ML tasks in a particular domain, search for a relatively recent highly cited “survey” paper, which should introduce you to the main ideas and give you a starting point for further research. <a href="https://arxiv.org/pdf/1907.09408.pdf">Here</a> is an example of one such survey paper, in this case with an emphasis on object detection.</p>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Title</th>
+<th>Authors</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><em>Deep Learning</em></td>
+<td>Ian Goodfellow, Yoshua Bengio, and Aaron Courville</td>
+<td>Seminal text on the theory and practice of using neural networks to learn and perform tasks</td>
+</tr>
+<tr class="even">
+<td><em>Numerical Methods for Scientists and Engineers</em></td>
+<td>R. W. Hamming</td>
+<td>Excellent general text covering important topics such as floating point precision and various approximation methods</td>
+</tr>
+<tr class="odd">
+<td><em>Standard notations for Deep Learning</em> (<a href="https://cs230.stanford.edu/files/Notation.pdf">link</a>)</td>
+<td>Stanford CS230 Course Notes</td>
+<td>Cheatsheet covering standard notation used by many texts and papers</td>
+</tr>
+<tr class="even">
+<td><em>Neural Networks and Deep Learning</em> (<a href="http://neuralnetworksanddeeplearning.com/index.html">link</a>)</td>
+<td>Michael Nielsen</td>
+<td>A gentler introduction to the theory and practice of neural networks</td>
+</tr>
+<tr class="odd">
+<td><em>Automatic Differentiation in Machine Learning: a Survey</em> (<a href="https://arxiv.org/pdf/1502.05767.pdf">link</a>)</td>
+<td>Atılım Güneş Baydin, Barak A. Pearlmutter, Alexey Andreyevich Radul, Jeffrey Mark Siskind</td>
+<td>Excellent survey paper documentating the various algorithms used for computational differentiation including viable alternatives to backpropagation</td>
+</tr>
+</tbody>
+</table>
 </body>
 </html>

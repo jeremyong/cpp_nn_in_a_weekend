@@ -30,7 +30,7 @@ Whether you wish to write your own for learning purposes,
 or if you need to deploy a neural network on a constrained (i.e. embedded) device,
 there is plenty to be gained from authoring a neural network from scratch.
 
-The neural network outlined here is hosted on [github](https://github.com/jeremyong/nn_in_a_weekend) and has enough abstractions to vaguely resemble a production network, without being overly engineered as to be indigestible in a sitting or two.
+The neural network outlined here is hosted on [github](https://github.com/jeremyong/cpp_nn_in_a_weekend) and has enough abstractions to vaguely resemble a production network, without being overly engineered as to be indigestible in a sitting or two.
 The training and test data provided is the venerable [MNIST](http://yann.lecun.com/exdb/mnist/) dataset of handwritten digits.
 While more exotic (and original) datasets exist, MNIST is chosen here because its sheer ubiquity guarantees you can find corresponding literature to help drive further experimentation, or troubleshoot when things go wrong.
 
@@ -240,7 +240,7 @@ There are an infinite number of functions that fit this criteria, but here, we'l
 
 \foreach \l in {1,2,10}
   \draw [->] (output-\l) -- ++(1,0)
-    node [above, midway] {$y_{\l}^{[2]}$};
+    node [above, midway] {$\hat{y}_{\l}^{[2]}$};
 
 \foreach \i in {1,2,3,783,784}
 {
@@ -263,7 +263,10 @@ There are an infinite number of functions that fit this criteria, but here, we'l
 \end{center}
 
 A few quick notes regarding notation: a superscript of the form $[i]$ is used to denote the $i$th layer.
-A subscript is used to denote a particular element within a layer or vector.
+A subscript is used to denote a particular element within a layer or vector. The vector $\mathbf{x}$ is
+usually reserved for training samples, and the vector $\mathbf{y}$ is typically reserved for sample labels
+(i.e. the desired "answer" for a given sample). The vector $\hat{\mathbf{y}}$ is used to denote a model's
+predicted labels for a given input.
 
 On the far left, we have the input layer with $784$ nodes corresponding to each of the 28 by 28 pixels in an individual sample.
 Each $x_i^{(0)}$ is a floating point value between 0 and 1 inclusive.
@@ -442,10 +445,10 @@ $$
 \begin{aligned}
 \mathrm{softmax}(\mathbf{z})_i &= \frac{\exp{z_i}}{\sum_j \exp{z_j}} \\
 \frac{\partial \left(\mathrm{softmax}(\mathbf{z})_i\right)}{\partial z_k} &=
-\begin{cases}
+\begin{dcases}
 \frac{\left(\sum_j\exp{z_j}\right)\exp{z_i} - \exp{2z_i}}{\left(\sum_j\exp{z_j}\right)^2}& i = k \\
 \frac{-\exp{z_i}\exp{z_k}}{\left(\sum_j\exp{z_j}\right)^2}& i \neq k
-\end{cases} \\
+\end{dcases} \\
 &= \begin{cases}
 \mathrm{softmax}(\mathbf{z})_i\left(1 - \mathrm{softmax}(\mathbf{z})_i\right) & i = k \\
 -\mathrm{softmax}(\mathbf{z})_i \mathrm{softmax}(\mathbf{z})_k & i \neq k
@@ -1172,11 +1175,10 @@ to $\infty$ or $-\infty$. In this case, the use of `std::exp` is one operation
 that sticks out. We will not implement a stable softmax here, but the following identity
 can be used to improve its stability should you need it:
 
-$$\mathrm{softmax}(\mathbf{z} + \mathbf{C})_i = \mathrm{softmax}(\mathbf{z})_i, \forall i$$
+$$\mathrm{softmax}(\mathbf{z} + \mathbf{C})_i = \mathrm{softmax}(\mathbf{z})_i$$
 
-\begin{proof}
 In this expression, $\mathbf{C}$ is a constant vector where all its elements are
-equal in value.
+equal in value. Expanding the definition of softmax in the LHS gives:
 
 $$
 \begin{aligned}
@@ -1184,10 +1186,9 @@ $$
 &= \frac
     {\exp{z_i}\exp{C}}
     {\left(\sum_i\exp{z_i}\right)\exp C} \\
-&= \mathrm{softmax}(\mathbf{z})_i && \qedhere
+&= \mathrm{softmax}(\mathbf{z})_i && \blacksquare
 \end{aligned}
 $$
-\end{proof}
 
 Thus, if we are considered about saturating `std::exp` with a large argument, we can simply set
 $C$ to be the additive inverse of the $z_i$ with the greatest magnitude within $\mathbf{z}$. Performing this
@@ -1569,7 +1570,7 @@ fairly straightforward.
 
 $$
 \begin{aligned}
-\frac{\partial J_{CE}}{\partial{y_i}} &= \frac{\partial \left(-\sum_j y_j\log{\left(\max(y_j, \epsilon)\right)}\right)}{\partial \hat{y}_i} \\
+\frac{\partial J_{CE}}{\partial{\hat{y}_i}} &= \frac{\partial \left(-\sum_j y_j\log{\left(\max(\hat{y}_j, \epsilon)\right)}\right)}{\partial \hat{y}_i} \\
 &= -\frac{y_i}{\max(\hat{y}_i, 0)}
 \end{aligned}
 $$
@@ -1597,7 +1598,7 @@ One thing to keep in mind here is that this implementation is *not* the most eff
 possible for a softmax layer feeding to a cross-entropy loss function by any stretch.
 The code and derivation here is completely general for arbitrary sample probability distributions.
 If, however, we can assume that the target distribution is one-hot encoded, then all gradients
-in this node will either be 0 or $-1/y_k$ where $k$ is the active label in the one-hot target.
+in this node will either be 0 or $-1/\hat{y}_k$ where $k$ is the active label in the one-hot target.
 Upon substitution in the previous layer, it should be
 clear that important cancellations are possible that dramatically simplify the gradient computations
 in the softmax layer. Here's the simplification, again assuming that the $k$th index is the correct
@@ -1900,4 +1901,19 @@ continuous learning in the cloud, etc. Crucially though, new research and develo
 in the works in this ever-changing field. On top of studying deep learning as a discipline in and of itself,
 there is plenty of room for specialization in particular domains, be it computer vision, NLP, epidemiology, or something else.
 My hope is that for some of you, the neural network in a weekend may take the form of a neural network in a fulfilling career or lifetime.
+
+#### Further Reading
+
+If you get a single book, *Deep Learning* (listed first in the following table) is highly recommended as a relatively self-complete text with cogent explanations written in a readable style.
+As you venture into attempting to perform ML tasks in a particular domain, search for a relatively recent highly cited "survey" paper, which should introduce
+you to the main ideas and give you a starting point for further research. [Here](https://arxiv.org/pdf/1907.09408.pdf) is an example of one such survey paper,
+in this case with an emphasis on object detection.
+
+|Title|Authors|Description|
+|---|---|---|
+|*Deep Learning*|Ian Goodfellow, Yoshua Bengio, and Aaron Courville|Seminal text on the theory and practice of using neural networks to learn and perform tasks|
+|*Numerical Methods for Scientists and Engineers*|R. W. Hamming|Excellent general text covering important topics such as floating point precision and various approximation methods|
+|*Standard notations for Deep Learning* ([link](https://cs230.stanford.edu/files/Notation.pdf))|Stanford CS230 Course Notes|Cheatsheet covering standard notation used by many texts and papers|
+|*Neural Networks and Deep Learning* ([link](http://neuralnetworksanddeeplearning.com/index.html))|Michael Nielsen|A gentler introduction to the theory and practice of neural networks|
+|*Automatic Differentiation in Machine Learning: a Survey* ([link](https://arxiv.org/pdf/1502.05767.pdf))|Atılım Güneş Baydin, Barak A. Pearlmutter, Alexey Andreyevich Radul, Jeffrey Mark Siskind|Excellent survey paper documentating the various algorithms used for computational differentiation including viable alternatives to backpropagation|
 

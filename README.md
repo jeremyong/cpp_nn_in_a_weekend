@@ -1,4 +1,4 @@
-# Neural Network in a Weekend in C++
+# C++ Neural Network in a Weekend
 
 This repository is the companion code the article "Neural Network in a Weekend."
 Readers are welcome to clone the repository or use the code herein as a reference if following along the article.
@@ -16,7 +16,6 @@ However, pull requests that introduce new features are unlikely to be considered
     ./src/nn train ../data/train
     # evaluate the model loss and accuracy based on the trained parameters
     ./src/nn evaluate ../data/test ./ff.params
-
 
 ## Conventions
 

@@ -75,7 +75,7 @@ void CCELossNode::forward(num_t* data)
 
 void CCELossNode::reverse(num_t* data)
 {
-    // dL/dq_i = d(-\sum_i(p_i log(q_i)))/dq_i = -1 / q_j where j is the index
+    // dJ/dq_i = d(-\sum_i(p_i log(q_i)))/dq_i = -1 / q_j where j is the index
     // of the correct classification (loss gradient for a single sample).
     //
     // Note the normalization factor where we multiply by the inverse batch
