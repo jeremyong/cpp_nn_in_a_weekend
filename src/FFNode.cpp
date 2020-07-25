@@ -159,14 +159,14 @@ void FFNode::reverse(num_t* gradients)
     //   - A is our activation function (ReLU or Softmax in this case)
     //   - L is the total loss (cost)
     //
-    // The gradient we receive from the subsequent is dL/dA(Z) which we can use
-    // to compute dL/dW_{i, j}, dL/dB_i, and dL/dI_i
+    // The gradient we receive from the subsequent is dJ/dg(Z) which we can use
+    // to compute dJ/dW_{i, j}, dJ/dB_i, and dJ/dI_i
 
-    // First, we compute dL/dz as dL/dA(z) * dA(z)/dz and store it in our
+    // First, we compute dJ/dz as dJ/dg(z) * dg(z)/dz and store it in our
     // activations array
     for (size_t i = 0; i != output_size_; ++i)
     {
-        // dA(z)/dz
+        // dg(z)/dz
         num_t activation_grad{0.0};
         switch (activation_)
         {
@@ -183,7 +183,7 @@ void FFNode::reverse(num_t* gradients)
             {
                 activation_grad = num_t{0.0};
             }
-            // dL/dz = dL/dA(z) * dA(z)/dz
+            // dJ/dz = dJ/dg(z) * dg(z)/dz
             activation_gradients_[i] = gradients[i] * activation_grad;
             break;
         case Activation::Softmax:
@@ -222,10 +222,10 @@ void FFNode::reverse(num_t* gradients)
 
     for (size_t i = 0; i != output_size_; ++i)
     {
-        // Next, let's compute the partial dL/db_i. If we hold all the weights
+        // Next, let's compute the partial dJ/db_i. If we hold all the weights
         // and inputs constant, it's clear that dz/db_i is just 1 (consider
-        // differentiating the line mx + b with respect to b). Thus, dL/db_i =
-        // dL/dA(z_i) * dA(z_i)/dz_i.
+        // differentiating the line mx + b with respect to b). Thus, dJ/db_i =
+        // dJ/dg(z_i) * dg(z_i)/dz_i.
         bias_gradients_[i] += activation_gradients_[i];
     }
 
@@ -254,8 +254,8 @@ void FFNode::reverse(num_t* gradients)
         for (size_t j = 0; j != output_size_; ++j)
         {
             // Each individual weight shows up in the equation for z once and is
-            // scaled by the corresponding input. Thus, dL/dw_i = dL/dA(z_i) *
-            // dA(z_i)/dz_i * dz_i/d_w_ij where the last factor is equal to the
+            // scaled by the corresponding input. Thus, dJ/dw_i = dJ/dg(z_i) *
+            // dg(z_i)/dz_i * dz_i/d_w_ij where the last factor is equal to the
             // input scaled by w_ij.
 
             weight_gradients_[j * input_size_ + i]

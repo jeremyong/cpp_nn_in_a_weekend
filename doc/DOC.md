@@ -426,13 +426,13 @@ later, but for now, let's establish a few preliminary results.
 
 Recall that our choice of loss function was the categorical cross entropy function, reproduced below:
 
-$$f(\mathbf{y}) = -\sum_{x\in X} \hat{y}_x \log{y_x}$$
+$$J_{CE}(\mathbf{\hat{y}}, \mathbf{y}) = -\sum_{x\in X} y_x \log{\hat{y}_x}$$
 
 $X$ corresponds to set of possible outcomes (here, $X$ is the set of digits from 0 to 9).
-The quantities $\hat{y}_x$ are the elements of the one-hot vector corresponding to the correct outcome, and
-$\mathbf{y}$ is the discrete probability distribution emitted by our model. We compute $\partial f(\mathbf{y})/\partial y_x$ like so:
+The quantities $y_x$ are the elements of the one-hot label corresponding to the correct outcome, and
+$\hat{\mathbf{y}}$ is the discrete probability distribution emitted by our model. We compute $\partial J_{CE}/\partial \hat{y}_x$ like so:
 
-$$\frac{\partial f(\mathbf{y})}{\partial y_x} = -\frac{\hat{y}_x}{y_x}$$
+$$\frac{\partial J_{CE}}{\partial \hat{y}_x} = -\frac{y_x}{\hat{y}_x}$$
 
 Notice that for a one-hot vector, this partial derivative vanishes whenever $x$ corresponds to an incorrect outcome.
 
@@ -615,13 +615,13 @@ The output node will also perform an affine transform, but will then apply the s
 In our project, the hidden and output nodes will share the same implementation that exposes a configurable activation function.
 Finally, the loss node will compute the loss of the predicted distribution based on the queried label for a given sample.
 
-In the figure above, solid arrow from left to right indicate data flow during the *feed forward* or *evaluation*
+In the figure above, solid arrow from left to right indicate data flow during the *feedforward* or *evaluation*
 portion of the model's execution. Each solid arrow corresponds to a data vector emitted by the source, and ingested
 by the destination. The dashed arrows from right to left indicate data flow during the *backpropagation* portion
 of the algorithm. These arrows correspond to gradient vectors of the evaluated loss with respect to the outputs.
 For example, as seen above, the hidden node is expected to forward data to the output node ($\mathbf{a}^{[1]}$). Later, after the model
 prediction has been computed and the loss evaluated, the gradient of the loss with respect to those outputs is
-expected ($\partial L/\partial a^{[1]}_i$ for each $a_i^{[1]}$ in $\mathbf{a}^{[1]}$).
+expected ($\partial J_{CE}/\partial a^{[1]}_i$ for each $a_i^{[1]}$ in $\mathbf{a}^{[1]}$).
 
 When simply evaluating data (without training), the final loss node will simply be omitted from the graph.
 In addition, no back-propagation of gradients will occur as the model parameters are ossified during evaluation.
@@ -1221,11 +1221,11 @@ of gradients through our feedforward node and dissect it immediately afterwards.
 ```c++
 void FFNode::reverse(num_t* gradients)
 {
-    // First, we compute dL/dz as dL/dA(z) * dA(z)/dz and store it in our
+    // First, we compute dJ/dz as dJ/dg(z) * dg(z)/dz and store it in our
     // activations array
     for (size_t i = 0; i != output_size_; ++i)
     {
-        // dA(z)/dz
+        // dg(z)/dz
         num_t activation_grad{0.0};
         switch (activation_)
         {
@@ -1238,7 +1238,7 @@ void FFNode::reverse(num_t* gradients)
             {
                 activation_grad = num_t{0.0};
             }
-            // dL/dz = dL/dA(z) * dA(z)/dz
+            // dJ/dz = dJ/dg(z) * dg(z)/dz
             activation_gradients_[i] = gradients[i] * activation_grad;
             break;
         case Activation::Softmax:
@@ -1265,7 +1265,7 @@ void FFNode::reverse(num_t* gradients)
 
     for (size_t i = 0; i != output_size_; ++i)
     {
-        // dL/db_i = dL/dA(z_i) * dA(z_i)/dz_i.
+        // dJ/db_i = dJ/dg(z_i) * dJ(g_i)/dz_i.
         bias_gradients_[i] += activation_gradients_[i];
     }
 
@@ -1300,28 +1300,28 @@ void FFNode::reverse(num_t* gradients)
 This code is likely more difficult to digest, so let's break it down into parts.
 During reverse accumulation (aka backpropagation), we will be given the loss gradients with
 respect to all of the outputs from the most recent forward pass, written mathematically
-as $\partial L/\partial a_i$ for each output scalar $a_i$.
+as $\partial J_{CE}/\partial a_i$ for each output scalar $a_i$.
 Given that information, we need to perform the following tasks:
 
-1. Compute $\partial L/\partial w_{ij}$ for each weight in our weight matrix
-2. Compute $\partial L/\partial b_i$ for each bias in our bias vector
-3. Compute $\partial L/\partial x_i$ for each input scalar in the most recent forward pass 
+1. Compute $\partial J_{CE}/\partial w_{ij}$ for each weight in our weight matrix
+2. Compute $\partial J_{CE}/\partial b_i$ for each bias in our bias vector
+3. Compute $\partial J_{CE}/\partial x_i$ for each input scalar in the most recent forward pass 
 4. Propagate all the loss gradients with respect to the inputs in step 3 back to the antecedent nodes
 
 As all outputs pass through an activation function, we will need
-to compute $\partial L/\partial f_i$ where $f_i$ is one of the linear rectifier or softmax function
+to compute $\partial J_{CE}/\partial g_i$ where $g_i$ is one of the linear rectifier or softmax function
 corresponding to a particular component of the output vector.
 Both derivatives are computed in the background section, so we'll just recite the results here.
-For the linear rectifier, $\partial L/\partial f_i$ will simply be 1 if $a_i$ was positive,
+For the linear rectifier, $\partial J_{CE}/\partial g_i$ will simply be 1 if $a_i$ was positive,
 and 0 otherwise. The softmax gradient is slightly more involved, but because every output
 of the softmax contributes additively to the loss, we require a sum of gradients here:
 
-$$\frac{\partial L}{\partial \mathrm{softmax}(\mathbf{z})_i} = \frac{\partial L}{\partial a_i}\sum_{j} \begin{cases}
+$$\frac{\partial J_{CE}}{\partial \mathrm{softmax}(\mathbf{z})_i} = \frac{\partial J_{CE}}{\partial a_i}\sum_{j} \begin{cases}
 \mathrm{softmax}(\mathbf{z})_i\left(1 - \mathrm{softmax}(\mathbf{z})_i\right) & i = j \\
 -\mathrm{softmax}(\mathbf{z})_i \mathrm{softmax}(\mathbf{z})_j & i \neq j
 \end{cases}$$
 
-The factor $\partial L/\partial a_i$ comes from the chain rule and is passed in from the subsequent node.
+The factor $\partial J_{CE}/\partial a_i$ comes from the chain rule and is passed in from the subsequent node.
 These intermediate expressions are computed and stored in `activation_gradients_` in the top portion
 of `FFNode::reverse`.
 Because the loss gradients all have a functional dependence on the activation function
@@ -1338,8 +1338,8 @@ the derivative with respect to $b_i$ is just
 
 $$
 \begin{aligned}
-\frac{\partial{a_i}}{\partial b_i} &= \frac{\partial f}{\partial z_i}\frac{\partial z_i}{\partial b_i} \\
-&= \frac{\partial f}{\partial z_i}
+\frac{\partial{a_i}}{\partial b_i} &= \frac{\partial g}{\partial z_i}\frac{\partial z_i}{\partial b_i} \\
+&= \frac{\partial g}{\partial z_i}
 \end{aligned}
 $$
 
@@ -1386,7 +1386,7 @@ $$
 $$
 
 $$
-\boxed{\frac{\partial L}{\partial w_{ij}} = \frac{\partial L}{\partial a_i}\frac{\partial a_i}{\partial z_i}x_j}
+\boxed{\frac{\partial J_{CE}}{\partial w_{ij}} = \frac{\partial J_{CE}}{\partial a_i}\frac{\partial a_i}{\partial z_i}x_j}
 $$
 
 The boxed result shows the final loss gradient with respect to a weight parameter.
@@ -1414,7 +1414,7 @@ important to note that a given input participates in the computation of *all* ou
 scalars. Thus, we expect each individual input gradient to be a summation.
 
 $$
-\frac{\partial L}{\partial x_i} = \sum_j \frac{\partial L}{\partial a_j}\frac{\partial a_j}{\partial z_j}w_{ij}
+\frac{\partial J_{CE}}{\partial x_i} = \sum_j \frac{\partial J_{CE}}{\partial a_j}\frac{\partial a_j}{\partial z_j}w_{ij}
 $$
 
 The code that computes the input gradients is defined here:
@@ -1514,10 +1514,11 @@ is not expected to have any subsequents.
 The implementation of `CCELossNode::forward` follows from the definition of cross-entropy,
 recalled here with some modifications:
 
-$$\hat{H}(\mathbf{y}, \hat{\mathbf{y}}) = -\sum_j \hat{y}_j\log \left(\max{y_j, \epsilon}\right) $$
+$$J_{CE}(\hat{\mathbf{y}}, \mathbf{y}) = -\sum_j y_j \log{\left(\max(\hat{y}_j, \epsilon) \right)} $$
 
-We've relabeled the two arguments to $\hat{H}$ as $y$ (the predicted distribution) and $\hat{y}$
-(the true distribution). In addition, clamp the argument of the logarithm with a small $\epsilon$
+$J$ is the common symbol ascribed to the cost or objective function, while $\hat{y}$ and $y$ refer
+to the predicted distribution and correct distribution respectively.
+In addition, clamp the argument of the logarithm with a small $\epsilon$
 to avoid a numerical singularity. The implementation is as follows:
 
 ```c++
@@ -1568,8 +1569,8 @@ fairly straightforward.
 
 $$
 \begin{aligned}
-\frac{\partial L}{\partial{y_i}} &= \frac{\partial \left(-\sum_j \hat{y}_j\log{(\max{y_j, \epsilon)}}\right)}{\partial y_i} \\
-&= -\frac{\hat{y_i}}{\max{(y_i, 0)}}
+\frac{\partial J_{CE}}{\partial{y_i}} &= \frac{\partial \left(-\sum_j y_j\log{\left(\max(y_j, \epsilon)\right)}\right)}{\partial \hat{y}_i} \\
+&= -\frac{y_i}{\max(\hat{y}_i, 0)}
 \end{aligned}
 $$
 
@@ -1604,7 +1605,7 @@ label:
 
 $$
 \begin{aligned}
-\frac{\partial L}{\partial \mathrm{softmax}(\mathbf{z})_i} &= \frac{\partial L}{\partial a_i}\sum_{j} \begin{cases}
+\frac{\partial J_{CE}}{\partial \mathrm{softmax}(\mathbf{z})_i} &= \frac{\partial J_{CE}}{\partial a_i}\sum_{j} \begin{cases}
 \mathrm{softmax}(\mathbf{z})_i\left(1 - \mathrm{softmax}(\mathbf{z})_i\right) & i = j \\
 -\mathrm{softmax}(\mathbf{z})_i \mathrm{softmax}(\mathbf{z})_j & i \neq j
 \end{cases} \\
@@ -1619,7 +1620,7 @@ $$
 \end{aligned}
 $$
 
-When following the computation above, remember that $\partial L / \partial a_i$ is 0 for all $i \neq k$.
+When following the computation above, remember that $\partial J_{CE} / \partial a_i$ is 0 for all $i \neq k$.
 Thus, the only term in the sum that survives is the term corresponding to $j = k$, at which point
 we break out the differentation depending on whether $i = k$ or $i \neq k$.
 
@@ -1677,8 +1678,8 @@ class GDOptimizer : public Optimizer
 {
 public:
     // "Eta" is the commonly accepted character used to denote the learning
-    // rate. Given a loss gradient dL/dp for some parameter p, during gradient
-    // descent, p will be adjusted such that p' = p - eta * dL/dp.
+    // rate. Given a loss gradient dJ/dp for some parameter p, during gradient
+    // descent, p will be adjusted such that p' = p - eta * dJ/dp.
     GDOptimizer(num_t eta) : eta_{eta} {}
 
     // This should be invoked at the end of each batch's evaluation. The
@@ -1842,7 +1843,7 @@ which is a function of the weight. For example, here is the cross-entropy loss w
 regularizer (also known as the ridge regularizer) added:
 
 
-$$-\sum_{x\in X} \hat{y}_x \log{y_x} + \frac{\lambda}{2} \mathbf{w}^{T}\mathbf{w}$$
+$$-\sum_{x\in X} y_x \log{\hat{y}_x} + \frac{\lambda}{2} \mathbf{w}^{T}\mathbf{w}$$
 
 In a slight abuse of notation, $\mathbf{w}$ here corresponds to a vector containing every
 weight in our network. The factor $\lambda$ is a constant we can choose to adjust the penalty

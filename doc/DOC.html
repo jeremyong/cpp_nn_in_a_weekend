@@ -221,9 +221,9 @@ for i in num_batches
 <p>SGD is very similar, but the batch size can be much smaller than the amount of training data available. This enables the model to get more frequent updates and waste fewer cycles especially at the start of training when the model is likely wildly inaccurate.</p>
 <p>When it comes time to compute the gradients, we are fortunate to have made the prescient choice of constructing our model solely with elementary functions in a manner conducive to relatively painless differentiation. However, we still must exercise care as there is plenty of bookkeeping involved. We will evaluate loss-gradients with respect to individual parameters when we walkthrough the implementation later, but for now, let’s establish a few preliminary results.</p>
 <p>Recall that our choice of loss function was the categorical cross entropy function, reproduced below:</p>
-<p><span class="math display">f(\mathbf{y}) = -\sum_{x\in X} \hat{y}_x \log{y_x}</span></p>
-<p><span class="math inline">X</span> corresponds to set of possible outcomes (here, <span class="math inline">X</span> is the set of digits from 0 to 9). The quantities <span class="math inline">\hat{y}_x</span> are the elements of the one-hot vector corresponding to the correct outcome, and <span class="math inline">\mathbf{y}</span> is the discrete probability distribution emitted by our model. We compute <span class="math inline">\partial f(\mathbf{y})/\partial y_x</span> like so:</p>
-<p><span class="math display">\frac{\partial f(\mathbf{y})}{\partial y_x} = -\frac{\hat{y}_x}{y_x}</span></p>
+<p><span class="math display">J_{CE}(\mathbf{\hat{y}}, \mathbf{y}) = -\sum_{x\in X} y_x \log{\hat{y}_x}</span></p>
+<p><span class="math inline">X</span> corresponds to set of possible outcomes (here, <span class="math inline">X</span> is the set of digits from 0 to 9). The quantities <span class="math inline">y_x</span> are the elements of the one-hot label corresponding to the correct outcome, and <span class="math inline">\hat{\mathbf{y}}</span> is the discrete probability distribution emitted by our model. We compute <span class="math inline">\partial J_{CE}/\partial \hat{y}_x</span> like so:</p>
+<p><span class="math display">\frac{\partial J_{CE}}{\partial \hat{y}_x} = -\frac{y_x}{\hat{y}_x}</span></p>
 <p>Notice that for a one-hot vector, this partial derivative vanishes whenever <span class="math inline">x</span> corresponds to an incorrect outcome.</p>
 <p>Working backwards in our model, we next provide the partial derivative of the softmax function:</p>
 <p><span class="math display">
@@ -319,7 +319,7 @@ z &amp; z &gt; 0
 <p>The bulwark of the implementation will consist of implementing this interface for all the nodes in our network. We will need to implement this interface for each of the nodes shown in the diagram below.</p>
 <p><img src="/home/jeremy/developer/nn_in_a_weekend/doc/cb34710dce878a77b3fd5f3e7e4746403aaaefcc.svg" /></p>
 <p>The first node (<code>MNIST</code>) will be responsible for acquiring new training samples and feeding it to the next layer for processing. In addition, it will provide an additional interface the final categorical cross-entropy loss node will use to query the correct label for that sample. The hidden node will perform the affine transform and apply the linear rectification activation. The output node will also perform an affine transform, but will then apply the softmax function. In our project, the hidden and output nodes will share the same implementation that exposes a configurable activation function. Finally, the loss node will compute the loss of the predicted distribution based on the queried label for a given sample.</p>
-<p>In the figure above, solid arrow from left to right indicate data flow during the <em>feed forward</em> or <em>evaluation</em> portion of the model’s execution. Each solid arrow corresponds to a data vector emitted by the source, and ingested by the destination. The dashed arrows from right to left indicate data flow during the <em>backpropagation</em> portion of the algorithm. These arrows correspond to gradient vectors of the evaluated loss with respect to the outputs. For example, as seen above, the hidden node is expected to forward data to the output node (<span class="math inline">\mathbf{a}^{[1]}</span>). Later, after the model prediction has been computed and the loss evaluated, the gradient of the loss with respect to those outputs is expected (<span class="math inline">\partial L/\partial a^{[1]}_i</span> for each <span class="math inline">a_i^{[1]}</span> in <span class="math inline">\mathbf{a}^{[1]}</span>).</p>
+<p>In the figure above, solid arrow from left to right indicate data flow during the <em>feedforward</em> or <em>evaluation</em> portion of the model’s execution. Each solid arrow corresponds to a data vector emitted by the source, and ingested by the destination. The dashed arrows from right to left indicate data flow during the <em>backpropagation</em> portion of the algorithm. These arrows correspond to gradient vectors of the evaluated loss with respect to the outputs. For example, as seen above, the hidden node is expected to forward data to the output node (<span class="math inline">\mathbf{a}^{[1]}</span>). Later, after the model prediction has been computed and the loss evaluated, the gradient of the loss with respect to those outputs is expected (<span class="math inline">\partial J_{CE}/\partial a^{[1]}_i</span> for each <span class="math inline">a_i^{[1]}</span> in <span class="math inline">\mathbf{a}^{[1]}</span>).</p>
 <p>When simply evaluating data (without training), the final loss node will simply be omitted from the graph. In addition, no back-propagation of gradients will occur as the model parameters are ossified during evaluation.</p>
 <p>The model class interface shown below will be used to house all the nodes in the computational graph, and provide various routines that are useful for operating over all constituent nodes as a collection.</p>
 <div class="sourceCode" id="cb4"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true"></a><span class="kw">class</span> Model</span>
@@ -761,11 +761,11 @@ z &amp; z &gt; 0
 <p>Here, we retain a pointer to the data ingested by the feedforward node for a full training cycle. Before delving into any derivations, let’s first present the code for the backpropagation of gradients through our feedforward node and dissect it immediately afterwards.</p>
 <div class="sourceCode" id="cb17"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true"></a><span class="dt">void</span> FFNode::reverse(<span class="dt">num_t</span>* gradients)</span>
 <span id="cb17-2"><a href="#cb17-2" aria-hidden="true"></a>{</span>
-<span id="cb17-3"><a href="#cb17-3" aria-hidden="true"></a>    <span class="co">// First, we compute dL/dz as dL/dA(z) * dA(z)/dz and store it in our</span></span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true"></a>    <span class="co">// First, we compute dJ/dz as dJ/dg(z) * dg(z)/dz and store it in our</span></span>
 <span id="cb17-4"><a href="#cb17-4" aria-hidden="true"></a>    <span class="co">// activations array</span></span>
 <span id="cb17-5"><a href="#cb17-5" aria-hidden="true"></a>    <span class="cf">for</span> (<span class="dt">size_t</span> i = <span class="dv">0</span>; i != <span class="va">output_size_</span>; ++i)</span>
 <span id="cb17-6"><a href="#cb17-6" aria-hidden="true"></a>    {</span>
-<span id="cb17-7"><a href="#cb17-7" aria-hidden="true"></a>        <span class="co">// dA(z)/dz</span></span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true"></a>        <span class="co">// dg(z)/dz</span></span>
 <span id="cb17-8"><a href="#cb17-8" aria-hidden="true"></a>        <span class="dt">num_t</span> activation_grad{<span class="fl">0.0</span>};</span>
 <span id="cb17-9"><a href="#cb17-9" aria-hidden="true"></a>        <span class="cf">switch</span> (<span class="va">activation_</span>)</span>
 <span id="cb17-10"><a href="#cb17-10" aria-hidden="true"></a>        {</span>
@@ -778,7 +778,7 @@ z &amp; z &gt; 0
 <span id="cb17-17"><a href="#cb17-17" aria-hidden="true"></a>            {</span>
 <span id="cb17-18"><a href="#cb17-18" aria-hidden="true"></a>                activation_grad = <span class="dt">num_t</span>{<span class="fl">0.0</span>};</span>
 <span id="cb17-19"><a href="#cb17-19" aria-hidden="true"></a>            }</span>
-<span id="cb17-20"><a href="#cb17-20" aria-hidden="true"></a>            <span class="co">// dL/dz = dL/dA(z) * dA(z)/dz</span></span>
+<span id="cb17-20"><a href="#cb17-20" aria-hidden="true"></a>            <span class="co">// dJ/dz = dJ/dg(z) * dg(z)/dz</span></span>
 <span id="cb17-21"><a href="#cb17-21" aria-hidden="true"></a>            <span class="va">activation_gradients_</span>[i] = gradients[i] * activation_grad;</span>
 <span id="cb17-22"><a href="#cb17-22" aria-hidden="true"></a>            <span class="cf">break</span>;</span>
 <span id="cb17-23"><a href="#cb17-23" aria-hidden="true"></a>        <span class="cf">case</span> Activation::Softmax:</span>
@@ -805,7 +805,7 @@ z &amp; z &gt; 0
 <span id="cb17-44"><a href="#cb17-44" aria-hidden="true"></a></span>
 <span id="cb17-45"><a href="#cb17-45" aria-hidden="true"></a>    <span class="cf">for</span> (<span class="dt">size_t</span> i = <span class="dv">0</span>; i != <span class="va">output_size_</span>; ++i)</span>
 <span id="cb17-46"><a href="#cb17-46" aria-hidden="true"></a>    {</span>
-<span id="cb17-47"><a href="#cb17-47" aria-hidden="true"></a>        <span class="co">// dL/db_i = dL/dA(z_i) * dA(z_i)/dz_i.</span></span>
+<span id="cb17-47"><a href="#cb17-47" aria-hidden="true"></a>        <span class="co">// dJ/db_i = dJ/dg(z_i) * dJ(g_i)/dz_i.</span></span>
 <span id="cb17-48"><a href="#cb17-48" aria-hidden="true"></a>        <span class="va">bias_gradients_</span>[i] += <span class="va">activation_gradients_</span>[i];</span>
 <span id="cb17-49"><a href="#cb17-49" aria-hidden="true"></a>    }</span>
 <span id="cb17-50"><a href="#cb17-50" aria-hidden="true"></a></span>
@@ -835,27 +835,27 @@ z &amp; z &gt; 0
 <span id="cb17-74"><a href="#cb17-74" aria-hidden="true"></a>        node-&gt;reverse(<span class="va">input_gradients_</span>.data());</span>
 <span id="cb17-75"><a href="#cb17-75" aria-hidden="true"></a>    }</span>
 <span id="cb17-76"><a href="#cb17-76" aria-hidden="true"></a>}</span></code></pre></div>
-<p>This code is likely more difficult to digest, so let’s break it down into parts. During reverse accumulation (aka backpropagation), we will be given the loss gradients with respect to all of the outputs from the most recent forward pass, written mathematically as <span class="math inline">\partial L/\partial a_i</span> for each output scalar <span class="math inline">a_i</span>. Given that information, we need to perform the following tasks:</p>
+<p>This code is likely more difficult to digest, so let’s break it down into parts. During reverse accumulation (aka backpropagation), we will be given the loss gradients with respect to all of the outputs from the most recent forward pass, written mathematically as <span class="math inline">\partial J_{CE}/\partial a_i</span> for each output scalar <span class="math inline">a_i</span>. Given that information, we need to perform the following tasks:</p>
 <ol type="1">
-<li>Compute <span class="math inline">\partial L/\partial w_{ij}</span> for each weight in our weight matrix</li>
-<li>Compute <span class="math inline">\partial L/\partial b_i</span> for each bias in our bias vector</li>
-<li>Compute <span class="math inline">\partial L/\partial x_i</span> for each input scalar in the most recent forward pass</li>
+<li>Compute <span class="math inline">\partial J_{CE}/\partial w_{ij}</span> for each weight in our weight matrix</li>
+<li>Compute <span class="math inline">\partial J_{CE}/\partial b_i</span> for each bias in our bias vector</li>
+<li>Compute <span class="math inline">\partial J_{CE}/\partial x_i</span> for each input scalar in the most recent forward pass</li>
 <li>Propagate all the loss gradients with respect to the inputs in step 3 back to the antecedent nodes</li>
 </ol>
-<p>As all outputs pass through an activation function, we will need to compute <span class="math inline">\partial L/\partial f_i</span> where <span class="math inline">f_i</span> is one of the linear rectifier or softmax function corresponding to a particular component of the output vector. Both derivatives are computed in the background section, so we’ll just recite the results here. For the linear rectifier, <span class="math inline">\partial L/\partial f_i</span> will simply be 1 if <span class="math inline">a_i</span> was positive, and 0 otherwise. The softmax gradient is slightly more involved, but because every output of the softmax contributes additively to the loss, we require a sum of gradients here:</p>
-<p><span class="math display">\frac{\partial L}{\partial \mathrm{softmax}(\mathbf{z})_i} = \frac{\partial L}{\partial a_i}\sum_{j} \begin{cases}
+<p>As all outputs pass through an activation function, we will need to compute <span class="math inline">\partial J_{CE}/\partial g_i</span> where <span class="math inline">g_i</span> is one of the linear rectifier or softmax function corresponding to a particular component of the output vector. Both derivatives are computed in the background section, so we’ll just recite the results here. For the linear rectifier, <span class="math inline">\partial J_{CE}/\partial g_i</span> will simply be 1 if <span class="math inline">a_i</span> was positive, and 0 otherwise. The softmax gradient is slightly more involved, but because every output of the softmax contributes additively to the loss, we require a sum of gradients here:</p>
+<p><span class="math display">\frac{\partial J_{CE}}{\partial \mathrm{softmax}(\mathbf{z})_i} = \frac{\partial J_{CE}}{\partial a_i}\sum_{j} \begin{cases}
 \mathrm{softmax}(\mathbf{z})_i\left(1 - \mathrm{softmax}(\mathbf{z})_i\right) &amp; i = j \\
 -\mathrm{softmax}(\mathbf{z})_i \mathrm{softmax}(\mathbf{z})_j &amp; i \neq j
 \end{cases}</span></p>
-<p>The factor <span class="math inline">\partial L/\partial a_i</span> comes from the chain rule and is passed in from the subsequent node. These intermediate expressions are computed and stored in <code>activation_gradients_</code> in the top portion of <code>FFNode::reverse</code>. Because the loss gradients all have a functional dependence on the activation function gradients, all results computed in tasks 1 through 4 above will depend on <code>activation_gradients_</code>.</p>
+<p>The factor <span class="math inline">\partial J_{CE}/\partial a_i</span> comes from the chain rule and is passed in from the subsequent node. These intermediate expressions are computed and stored in <code>activation_gradients_</code> in the top portion of <code>FFNode::reverse</code>. Because the loss gradients all have a functional dependence on the activation function gradients, all results computed in tasks 1 through 4 above will depend on <code>activation_gradients_</code>.</p>
 <h4 id="computing-bias-gradients">Computing bias gradients</h4>
 <p>The bias gradients are the easiest to compute due to how they show up in the expression. Since a node’s output is given as</p>
 <p><span class="math display">a_i = f\left(\mathbf{W}_i \cdot \mathbf{x} + b_i = z_i\right)</span></p>
 <p>the derivative with respect to <span class="math inline">b_i</span> is just</p>
 <p><span class="math display">
 \begin{aligned}
-\frac{\partial{a_i}}{\partial b_i} &amp;= \frac{\partial f}{\partial z_i}\frac{\partial z_i}{\partial b_i} \\
-&amp;= \frac{\partial f}{\partial z_i}
+\frac{\partial{a_i}}{\partial b_i} &amp;= \frac{\partial g}{\partial z_i}\frac{\partial z_i}{\partial b_i} \\
+&amp;= \frac{\partial g}{\partial z_i}
 \end{aligned}
 </span></p>
 <p>Thus we can simply accumulate the result stored in <code>activation_gradients_</code> as the loss gradient with respect to each bias. Please take note! The code that performs this update is</p>
@@ -880,7 +880,7 @@ z &amp; z &gt; 0
 \end{aligned}
 </span></p>
 <p><span class="math display">
-\boxed{\frac{\partial L}{\partial w_{ij}} = \frac{\partial L}{\partial a_i}\frac{\partial a_i}{\partial z_i}x_j}
+\boxed{\frac{\partial J_{CE}}{\partial w_{ij}} = \frac{\partial J_{CE}}{\partial a_i}\frac{\partial a_i}{\partial z_i}x_j}
 </span></p>
 <p>The boxed result shows the final loss gradient with respect to a weight parameter. The weight gradient accumulation appears in the following code, where all <span class="math inline">N \times M</span> weights are updated in a couple of nested loops:</p>
 <div class="sourceCode" id="cb20"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true"></a>    <span class="cf">for</span> (<span class="dt">size_t</span> i = <span class="dv">0</span>; i != <span class="va">input_size_</span>; ++i)</span>
@@ -894,7 +894,7 @@ z &amp; z &gt; 0
 <h4 id="computing-the-input-gradients">Computing the input gradients</h4>
 <p>The last set of gradients we need to compute are the loss gradients with respect to the inputs, to be forwarded to the antecedent node. This calculation is similar to the calculation of the weight gradients in terms of the linear dependence. However, it is important to note that a given input participates in the computation of <em>all</em> output scalars. Thus, we expect each individual input gradient to be a summation.</p>
 <p><span class="math display">
-\frac{\partial L}{\partial x_i} = \sum_j \frac{\partial L}{\partial a_j}\frac{\partial a_j}{\partial z_j}w_{ij}
+\frac{\partial J_{CE}}{\partial x_i} = \sum_j \frac{\partial J_{CE}}{\partial a_j}\frac{\partial a_j}{\partial z_j}w_{ij}
 </span></p>
 <p>The code that computes the input gradients is defined here:</p>
 <div class="sourceCode" id="cb21"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true"></a>    <span class="bu">std::</span>fill(<span class="va">input_gradients_</span>.begin(), <span class="va">input_gradients_</span>.end(), <span class="dv">0</span>);</span>
@@ -966,8 +966,8 @@ z &amp; z &gt; 0
 <span id="cb23-48"><a href="#cb23-48" aria-hidden="true"></a>};</span></code></pre></div>
 <p>The <code>CCELossNode</code> is similar to other nodes in that it implements a forward pass for computing the loss of a given sample, and a reverse pass to compute gradients of that loss and pass them back to the antecedent node. Distinct from the previous nodes is that the argument to <code>CCELossNode::reverse</code> is ignored as the loss node is not expected to have any subsequents.</p>
 <p>The implementation of <code>CCELossNode::forward</code> follows from the definition of cross-entropy, recalled here with some modifications:</p>
-<p><span class="math display">\hat{H}(\mathbf{y}, \hat{\mathbf{y}}) = -\sum_j \hat{y}_j\log \left(\max{y_j, \epsilon}\right) </span></p>
-<p>We’ve relabeled the two arguments to <span class="math inline">\hat{H}</span> as <span class="math inline">y</span> (the predicted distribution) and <span class="math inline">\hat{y}</span> (the true distribution). In addition, clamp the argument of the logarithm with a small <span class="math inline">\epsilon</span> to avoid a numerical singularity. The implementation is as follows:</p>
+<p><span class="math display">J_{CE}(\hat{\mathbf{y}}, \mathbf{y}) = -\sum_j y_j \log{\left(\max(\hat{y}_j, \epsilon) \right)} </span></p>
+<p><span class="math inline">J</span> is the common symbol ascribed to the cost or objective function, while <span class="math inline">\hat{y}</span> and <span class="math inline">y</span> refer to the predicted distribution and correct distribution respectively. In addition, clamp the argument of the logarithm with a small <span class="math inline">\epsilon</span> to avoid a numerical singularity. The implementation is as follows:</p>
 <div class="sourceCode" id="cb24"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true"></a><span class="dt">void</span> CCELossNode::forward(<span class="dt">num_t</span>* data)</span>
 <span id="cb24-2"><a href="#cb24-2" aria-hidden="true"></a>{</span>
 <span id="cb24-3"><a href="#cb24-3" aria-hidden="true"></a>    <span class="dt">num_t</span> max{<span class="fl">0.0</span>};</span>
@@ -1009,8 +1009,8 @@ z &amp; z &gt; 0
 <p>As with the feedforward node, a pointer to the inputs to the node is preserved to compute gradients later. A bit of bookkeeping is also done so we can track accuracy and accumulate loss during batch. The derivative of the loss of an individual sample with respect to the inputs is also fairly straightforward.</p>
 <p><span class="math display">
 \begin{aligned}
-\frac{\partial L}{\partial{y_i}} &amp;= \frac{\partial \left(-\sum_j \hat{y}_j\log{(\max{y_j, \epsilon)}}\right)}{\partial y_i} \\
-&amp;= -\frac{\hat{y_i}}{\max{(y_i, 0)}}
+\frac{\partial J_{CE}}{\partial{y_i}} &amp;= \frac{\partial \left(-\sum_j y_j\log{\left(\max(y_j, \epsilon)\right)}\right)}{\partial \hat{y}_i} \\
+&amp;= -\frac{y_i}{\max(\hat{y}_i, 0)}
 \end{aligned}
 </span></p>
 <p>The implementation is similarly straightforward. As with the other nodes with loss gradients, the loss gradients with respect to all inputs are forwarded to antecedent nodes.</p>
@@ -1030,7 +1030,7 @@ z &amp; z &gt; 0
 <p>One thing to keep in mind here is that this implementation is <em>not</em> the most efficient implementation possible for a softmax layer feeding to a cross-entropy loss function by any stretch. The code and derivation here is completely general for arbitrary sample probability distributions. If, however, we can assume that the target distribution is one-hot encoded, then all gradients in this node will either be 0 or <span class="math inline">-1/y_k</span> where <span class="math inline">k</span> is the active label in the one-hot target. Upon substitution in the previous layer, it should be clear that important cancellations are possible that dramatically simplify the gradient computations in the softmax layer. Here’s the simplification, again assuming that the <span class="math inline">k</span>th index is the correct label:</p>
 <p><span class="math display">
 \begin{aligned}
-\frac{\partial L}{\partial \mathrm{softmax}(\mathbf{z})_i} &amp;= \frac{\partial L}{\partial a_i}\sum_{j} \begin{cases}
+\frac{\partial J_{CE}}{\partial \mathrm{softmax}(\mathbf{z})_i} &amp;= \frac{\partial J_{CE}}{\partial a_i}\sum_{j} \begin{cases}
 \mathrm{softmax}(\mathbf{z})_i\left(1 - \mathrm{softmax}(\mathbf{z})_i\right) &amp; i = j \\
 -\mathrm{softmax}(\mathbf{z})_i \mathrm{softmax}(\mathbf{z})_j &amp; i \neq j
 \end{cases} \\
@@ -1044,7 +1044,7 @@ z &amp; z &gt; 0
 \end{dcases}
 \end{aligned}
 </span></p>
-<p>When following the computation above, remember that <span class="math inline">\partial L / \partial a_i</span> is 0 for all <span class="math inline">i \neq k</span>. Thus, the only term in the sum that survives is the term corresponding to <span class="math inline">j = k</span>, at which point we break out the differentation depending on whether <span class="math inline">i = k</span> or <span class="math inline">i \neq k</span>.</p>
+<p>When following the computation above, remember that <span class="math inline">\partial J_{CE} / \partial a_i</span> is 0 for all <span class="math inline">i \neq k</span>. Thus, the only term in the sum that survives is the term corresponding to <span class="math inline">j = k</span>, at which point we break out the differentation depending on whether <span class="math inline">i = k</span> or <span class="math inline">i \neq k</span>.</p>
 <p>This is an elegant result! Essentially, the gradient of a the loss with respect to an emitted probability <span class="math inline">p(x)</span> is simply <span class="math inline">p(x)</span> if <span class="math inline">x</span> was not the correct label, and <span class="math inline">p(x) - 1</span> if it was. Considering the effect of gradient descent, this should check out with our intuition. The optimizer seeks to suppress probabilities predicted that should have been 0, and increase probabilities predicted that should have been 1.</p>
 <p>This sort of optimization highlights an important observation about backpropagation, namely, that they do not guarantee any sort of optimality beyond a worst-case performance ceiling. Several production neural networks have architectures that employ heuristics to identify optimizations such as this one, but the problem of generating a perfect computational strategy is NP and so not covered here. The code provided here will remain in the general form, despite being slower in the interest of maintaining generality and not adding complexity, but you are encouraged to consider abstractions to permit this type of optimization in your own architecture.</p>
 <p>The last thing we need to provide for <code>CCELossNode</code> are a few helper routines:</p>
@@ -1076,8 +1076,8 @@ z &amp; z &gt; 0
 <span id="cb27-2"><a href="#cb27-2" aria-hidden="true"></a>{</span>
 <span id="cb27-3"><a href="#cb27-3" aria-hidden="true"></a><span class="kw">public</span>:</span>
 <span id="cb27-4"><a href="#cb27-4" aria-hidden="true"></a>    <span class="co">// &quot;Eta&quot; is the commonly accepted character used to denote the learning</span></span>
-<span id="cb27-5"><a href="#cb27-5" aria-hidden="true"></a>    <span class="co">// rate. Given a loss gradient dL/dp for some parameter p, during gradient</span></span>
-<span id="cb27-6"><a href="#cb27-6" aria-hidden="true"></a>    <span class="co">// descent, p will be adjusted such that p&#39; = p - eta * dL/dp.</span></span>
+<span id="cb27-5"><a href="#cb27-5" aria-hidden="true"></a>    <span class="co">// rate. Given a loss gradient dJ/dp for some parameter p, during gradient</span></span>
+<span id="cb27-6"><a href="#cb27-6" aria-hidden="true"></a>    <span class="co">// descent, p will be adjusted such that p&#39; = p - eta * dJ/dp.</span></span>
 <span id="cb27-7"><a href="#cb27-7" aria-hidden="true"></a>    GDOptimizer(<span class="dt">num_t</span> eta) : <span class="va">eta_</span>{eta} {}</span>
 <span id="cb27-8"><a href="#cb27-8" aria-hidden="true"></a></span>
 <span id="cb27-9"><a href="#cb27-9" aria-hidden="true"></a>    <span class="co">// This should be invoked at the end of each batch&#39;s evaluation. The</span></span>
@@ -1170,7 +1170,7 @@ Avg Loss: 0.292608  91.009998% correct</code></pre>
 <p>The dimensionality of our model will often be much higher than needed to optimally make accurate predictions. Thus, the likelihood of overfitting increases as more training data is fed into the model. The primary tool to combat overfitting is <em>regularization</em>. Loosely speaking, regularization is any strategy employed to restrict the hypothesis space of fit-functions the model can occcupy to prevent overfitting.</p>
 <p>What is meant by restricting the hypothesis space, you might ask? The idea is to consider the entire family of functions possible spanned by the model’s entire parameter vector. If our model has 10000 parameters (many networks will easily exceed this), each unique 10000-dimensional vector corresponds to a possible solution. However, we know it’s unlikely that certain parameters should be vastly greater in magnitude than others in a theoretically <em>optimal</em> condition. Models with “strange” parameter vectors that are unlikely to be the optimal solution are likely converged on as a result of overfitting. Therefore, it makes sense to consider ways to constrain the space this parameter vector may occupy.</p>
 <p>The most common approach to achieve this is to add an initial penalty term to the loss function which is a function of the weight. For example, here is the cross-entropy loss with the so-called <span class="math inline">L^2</span> regularizer (also known as the ridge regularizer) added:</p>
-<p><span class="math display">-\sum_{x\in X} \hat{y}_x \log{y_x} + \frac{\lambda}{2} \mathbf{w}^{T}\mathbf{w}</span></p>
+<p><span class="math display">-\sum_{x\in X} y_x \log{\hat{y}_x} + \frac{\lambda}{2} \mathbf{w}^{T}\mathbf{w}</span></p>
 <p>In a slight abuse of notation, <span class="math inline">\mathbf{w}</span> here corresponds to a vector containing every weight in our network. The factor <span class="math inline">\lambda</span> is a constant we can choose to adjust the penalty size. Note that when a regularizer is used, we <em>expect training loss to increase</em>. The tradeoff is that we simultaneously <em>expect test loss to decrease</em>. Tuning the regularization speed <span class="math inline">\lambda</span> is a routine problem for model fitting in the wild.</p>
 <p>By modifying the loss function, in principal, all loss gradients must change as well. Fortunately, as we’ve only added a quadratic term to the loss, the only change to the gradient will be an additional linear additive term <span class="math inline">\lambda\mathbf{w}</span>. This means we don’t have to add a ton of code to modify all the gradient calculations thus far. Instead, we can simply <em>decay</em> the weight based on a percentage of the weight’s magnitude when we adjust the weight after each batch is performed. You will often here this type of regularization referred to as simply <em>weight decay</em> for this reason.</p>
 <p>To implement <span class="math inline">L^2</span> regularization, simply add a percentage of a weight’s value to its loss gradient. Crucially, do not adjust bias parameters in the same way. We only wish to penalize parameters for which increased magnitude corresponds with more complex models. Bias parameters are simply scalar offsets, regardless of their value and do not scale the inputs. Thus, attempting to regularize them will likely increase <em>both</em> training and test error.</p>
