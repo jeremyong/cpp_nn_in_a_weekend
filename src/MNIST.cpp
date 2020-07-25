@@ -3,20 +3,15 @@
 #include <cstdio>
 #include <stdexcept>
 
-// Read sizeof(T) bytes and reverse them to return an unsigned integer on LE
+// Read 4 bytes and reverse them to return an unsigned integer on LE
 // architectures
-template <typename T>
-T read_be(std::ifstream& in);
-
-template <>
-uint32_t read_be(std::ifstream& in)
+void read_be(std::ifstream& in, uint32_t* out)
 {
-    char buf[4];
+    char* buf = reinterpret_cast<char*>(out);
     in.read(buf, 4);
 
     std::swap(buf[0], buf[3]);
     std::swap(buf[1], buf[2]);
-    return *reinterpret_cast<uint32_t*>(buf);
 }
 
 MNIST::MNIST(Model& model, std::ifstream& images, std::ifstream& labels)
@@ -25,28 +20,33 @@ MNIST::MNIST(Model& model, std::ifstream& images, std::ifstream& labels)
     , labels_{labels}
 {
     // Confirm that passed input file streams are well-formed MNIST data sets
-    uint32_t image_magic = read_be<uint32_t>(images);
+    uint32_t image_magic;
+    read_be(images, &image_magic);
     if (image_magic != 2051)
     {
         throw std::runtime_error{"Images file appears to be malformed"};
     }
-    image_count_ = read_be<uint32_t>(images);
+    read_be(images, &image_count_);
 
-    uint32_t labels_magic = read_be<uint32_t>(labels);
+    uint32_t labels_magic;
+    read_be(labels, &labels_magic);
     if (labels_magic != 2049)
     {
         throw std::runtime_error{"Images file appears to be malformed"};
     }
 
-    uint32_t label_count = read_be<uint32_t>(labels);
+    uint32_t label_count;
+    read_be(labels, &label_count);
     if (label_count != image_count_)
     {
         throw std::runtime_error(
             "Label count did not match the number of images supplied");
     }
 
-    uint32_t rows    = read_be<uint32_t>(images);
-    uint32_t columns = read_be<uint32_t>(images);
+    uint32_t rows;
+    uint32_t columns;
+    read_be(images, &rows);
+    read_be(images, &columns);
     if (rows != 28 || columns != 28)
     {
         throw std::runtime_error{
@@ -59,8 +59,6 @@ MNIST::MNIST(Model& model, std::ifstream& images, std::ifstream& labels)
 void MNIST::forward(num_t* data)
 {
     read_next();
-    data_[0] = 0.3;
-    data_[1] = 0.7;
     for (Node* node : subsequents_)
     {
         node->forward(data_);

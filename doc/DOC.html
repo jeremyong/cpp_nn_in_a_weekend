@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <meta name="author" content="Jeremy Ong" />
+  <title>C++ Neural Network in a Weekend</title>
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    span.underline{text-decoration: underline;}
+    div.column{display: inline-block; vertical-align: top; width: 50%;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    ul.task-list{list-style: none;}
+    pre > code.sourceCode { white-space: pre; position: relative; }
+    pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+    pre > code.sourceCode > span:empty { height: 1.2em; }
+    code.sourceCode > span { color: inherit; text-decoration: inherit; }
+    div.sourceCode { margin: 1em 0; }
+    pre.sourceCode { margin: 0; }
+    @media screen {
+    div.sourceCode { overflow: auto; }
+    }
+    @media print {
+    pre > code.sourceCode { white-space: pre-wrap; }
+    pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+    }
+    pre.numberSource code
+      { counter-reset: source-line 0; }
+    pre.numberSource code > span
+      { position: relative; left: -4em; counter-increment: source-line; }
+    pre.numberSource code > span > a:first-child::before
+      { content: counter(source-line);
+        position: relative; left: -1em; text-align: right; vertical-align: baseline;
+        border: none; display: inline-block;
+        -webkit-touch-callout: none; -webkit-user-select: none;
+        -khtml-user-select: none; -moz-user-select: none;
+        -ms-user-select: none; user-select: none;
+        padding: 0 4px; width: 4em;
+        color: #aaaaaa;
+      }
+    pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+    div.sourceCode
+      {   }
+    @media screen {
+    pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+    }
+    code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+    code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+    code span.at { color: #7d9029; } /* Attribute */
+    code span.bn { color: #40a070; } /* BaseN */
+    code span.bu { } /* BuiltIn */
+    code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+    code span.ch { color: #4070a0; } /* Char */
+    code span.cn { color: #880000; } /* Constant */
+    code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+    code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+    code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+    code span.dt { color: #902000; } /* DataType */
+    code span.dv { color: #40a070; } /* DecVal */
+    code span.er { color: #ff0000; font-weight: bold; } /* Error */
+    code span.ex { } /* Extension */
+    code span.fl { color: #40a070; } /* Float */
+    code span.fu { color: #06287e; } /* Function */
+    code span.im { } /* Import */
+    code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+    code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+    code span.op { color: #666666; } /* Operator */
+    code span.ot { color: #007020; } /* Other */
+    code span.pp { color: #bc7a00; } /* Preprocessor */
+    code span.sc { color: #4070a0; } /* SpecialChar */
+    code span.ss { color: #bb6688; } /* SpecialString */
+    code span.st { color: #4070a0; } /* String */
+    code span.va { color: #19177c; } /* Variable */
+    code span.vs { color: #4070a0; } /* VerbatimString */
+    code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.11.1/katex.min.js"></script>
+  <script>document.addEventListener("DOMContentLoaded", function () {
+   var mathElements = document.getElementsByClassName("math");
+   var macros = [];
+   for (var i = 0; i < mathElements.length; i++) {
+    var texText = mathElements[i].firstChild;
+    if (mathElements[i].tagName == "SPAN") {
+     katex.render(texText.data, mathElements[i], {
+      displayMode: mathElements[i].classList.contains('display'),
+      throwOnError: false,
+      macros: macros,
+      fleqn: false
+     });
+  }}});
+  </script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.11.1/katex.min.css" />
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+  
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">C++ Neural Network in a Weekend</h1>
+<p class="author">Jeremy Ong</p>
+</header>
+<h2 id="introduction">Introduction</h2>
+<p>Would you like to write a neural network from start to finish? Are you perhaps shaky on some of the fundamental concepts and derivations, such as categorical cross-entropy loss or backpropagation? Alternatively, would you like an introduction to machine learning without relying on “magical” frameworks that seem to perform AI miracles with only a few lines of code (and just as little intuition)? If so, this article was written for you.</p>
+<p>Deep learning as a technology and discipline has been booming. Nearly every facet of deep learning is teeming with progress and healthy competition to achieve state of the art performance and efficiency. It’s no surprise that resources tend to emphasize the “latest and greatest” in feats such as object recognition, natural language parsing, “deep fakes”, and more. In contrast, fewer resources expand as much on the practical <em>engineering</em> aspects of deep learning. That is, how should a deep learning framework be structured? How do you go about rolling your own infrastructure instead of relying on Keras, Pytorch, Tensorflow, or any of the other dominant frameworks? Whether you wish to write your own for learning purposes, or if you need to deploy a neural network on a constrained (i.e. embedded) device, there is plenty to be gained from authoring a neural network from scratch.</p>
+<p>The neural network outlined here is hosted on <a href="https://github.com/jeremyong/nn_in_a_weekend">github</a> and has enough abstractions to vaguely resemble a production network, without being overly engineered as to be indigestible in a sitting or two. The training and test data provided is the venerable <a href="http://yann.lecun.com/exdb/mnist/">MNIST</a> dataset of handwritten digits. While more exotic (and original) datasets exist, MNIST is chosen here because its sheer ubiquity guarantees you can find corresponding literature to help drive further experimentation, or troubleshoot when things go wrong.</p>
+<h2 id="background">Background</h2>
+<p>This section serves as a moderately high-level description of the major mathematical underpinnings of neural networks and may be safely skipped by those who prefer to jump straight to the code.</p>
+<p>Suppose we have a task we would like a machine learning model to complete (e.g. recognizing handwritten digits). At a high level, we need to perform the following tasks:</p>
+<ol type="1">
+<li>First, we must conceptualize the task as a “function” such that the inputs and outputs of the task can be described in a concrete mathematical sense (amenable for programmability).</li>
+<li>Second, we need a way to quantify the degree to which our model is performing poorly against a known set of correct answers. This is typically denoted as the <em>loss</em> function of the model.</li>
+<li>Third, we need an <em>optimization strategy</em> which will describe how to adjust the model after feedback is provided regarding the model’s performance as per the loss function described above.</li>
+<li>Fourth, we need a <em>regularization strategy</em> to address inadvertently tuning the model with a high degree of specificity to our training data, at the cost of generalized performance when handling inputs not yet encountered.</li>
+<li>Fifth, we need an <em>architecture</em> for our model, including how inputs are transformed into outputs and an enumaration of all the adjustable parameters the model supports.</li>
+<li>Finally, we need a robust <em>implementation</em> that executes the above within memory and execution budgets, accounting for floating-point stability, reproducibility, and a number of other engineering-related matters.</li>
+</ol>
+<p><em>Deep learning</em> is distinct from other machine learning models in that the architecture is heavily over-parameterized and based on simpler <em>building blocks</em> as opposed to bespoke components. The building blocks used are neurons, or particular arrangements of neurons, typically organized as layers. Over the course of training a deep learning model, it is expected that <em>features</em> of the inputs are learned and manifested as various parameter values in these neurons.</p>
+<h3 id="categorical-cross-entropy-loss">Categorical Cross-Entropy Loss</h3>
+<p>More concretely, the task at hand is to train a model to recognize a 28 by 28 pixel handwritten greyscale digit. For simplicity, our model will interpret the data as a flattened 784-dimensional vector. Instead of describing the architecture of the model first, we’ll start with understanding what the model should output and how to assess the model’s performance. The output of our model will be a 10-dimensional vector, representing the probability distribution of the supplied input. That is, each element of the output vector indicates the model’s estimation of the probability that the digit’s value matches the corresponding element index. If the model outputs:</p>
+<p><span class="math display">M(\mathbf{I}) = \left[0, 0, 0.5, 0.5, 0, 0, 0, 0, 0, 0\right]</span></p>
+<p>for some input image <span class="math inline">\mathbf{I}</span>, we interpret this to mean that the model believes there is an equal chance of the examined digit to be a 2 or a 3.</p>
+<p>Next, we should consider how to quantify the model’s loss. Suppose, for example, that the image <span class="math inline">\mathbf{I}</span> actually corresponded to the digit “7” (our model made a horrible prediction!), how might we penalize the model? In this case, we know that the <em>actual</em> probability distribution is the following:</p>
+<p><span class="math display">\left[0, 0, 0, 0, 0, 0, 0, 1, 0, 0\right]</span></p>
+<p>This is known as a “one-hot” encoded vector, but it may be helpful to think of it as a probability distribution given a set of events that are mutually exclusive (a digit cannot be both a “7” <em>and</em> a “3” for instance).</p>
+<p>Fortunately, information theory provides us some guidance on defining an easy-to-compute loss function which quantifies the dissimilarities between two probability distributions. If the probability of of an event <span class="math inline">E</span> is given as <span class="math inline">P(E)</span>, then the <em>entropy</em> of this event is given as <span class="math inline">-\log P(E)</span>. The negation ensures that this is a positive quantity, and by inspection, the entropy increases as an event becomes less likely. Conversely, in the limit as <span class="math inline">P(E)</span> approaches <span class="math inline">1</span>, the entropy shrinks to <span class="math inline">0</span>. While several interpretations of entropy are possible, the pertinent interpretation here is that entropy is a <em>measure of the information conveyed when a particular event occurs</em>. That the “sun rose this morning” is a fairly mundane observation but being told “the sun exploded” is sure to pique your attention.</p>
+<p>Let’s consider next entropy in the context of a probability distribution. Given a discrete random variable <span class="math inline">X</span> which can take on values <span class="math inline">x_0, \dots, x_{n-1}</span> with probabilities <span class="math inline">p(x_0), \dots, p(x_{n-1})</span>, the entropy of the random variable <span class="math inline">X</span> is defined as:</p>
+<p><span class="math display">H(X) = -\sum_{x \in X} p(x) \log p(x)</span></p>
+<p>For example, suppose <span class="math inline">W</span> is a random variable that represents today’s weather which can either be “sunny” or “rainy” (a binary random variable). The entropy <span class="math inline">H(W)</span> can be given as:</p>
+<p><span class="math display">H(W) = -S\log S - (1 - S) \log (1 - S)</span></p>
+<p>where <span class="math inline">S</span> is the probability of a sunny day, and hence <span class="math inline">1 - S</span> is the probability of a rainy day. What does this quantity mean? If we were to describe it in words, each term of the sum in the entropy calculation corresponds to the information of a particular event, weighted by the probability of the event. Thus, the entropy of the distribution is literally the <em>expected amount of information contained in an event</em> for a given distribution. If we plot <span class="math inline">-S\log S - (1 - S) \log(1 - S)</span> as a function of <span class="math inline">S</span>, we will see something like this:</p>
+<figure>
+<img src="plots/8240935388147373773.png" class="matplotlib" alt="" />
+</figure>
+<p>As a minor note, while <span class="math inline">\log 0</span> is an undefined quantity, information theorists accept that <span class="math inline">\lim_{p\rightarrow 0} p\log p = 0</span> by convention.</p>
+<p>Intuitively, when the distribution is 50-50, the uncertainty of a binary is maximal, and by extension the amount of information contained in each event is maximized too. Put another way, if you lived in an area where it was always sunny, you wouldn’t <em>learn anything</em> if someone told you it was sunny today.</p>
+<p>In the previous example, we weighted the event entropies according to the event’s probability distribution. What would happen if, instead, we used weights corresponding to a <em>different</em> probability distribution? This is known as the <em>cross entropy</em>:</p>
+<p><span class="math display">H(p, q) = -\sum_{x \in X} p(x)\log q(x)</span></p>
+<p>To get some intuition about this, first, we note that if <span class="math inline">p(x) = q(x), \forall x\in X</span>, the cross entropy trivially matches the self-entropy. Let’s go back to our binary entropy example and visualize what it looks like if we chose a completely <em>incorrect</em> distribution. Specifically, suppose we computed the cross entropy where if the probability of a sunny day is <span class="math inline">S</span>, we weight the entropy with <span class="math inline">1 - S</span> instead of <span class="math inline">S</span> as in the self-entropy formula.</p>
+<figure>
+<img src="plots/-8306432318206363957.png" class="matplotlib" alt="" />
+</figure>
+<p>If you compare the values with the previous figure, you’ll see that the cross entropy diverges from the self-entropy everywhere except <span class="math inline">0.5</span>, where <span class="math inline">S = 1 - S</span>. The difference between the cross entropy <span class="math inline">H(p, q)</span> and entropy <span class="math inline">H(p)</span> provides then, a <em>measure of error</em> between the presumed distribution <span class="math inline">q</span> and the true distribution <span class="math inline">p</span>. This difference is also known as the <a href="https://en.wikipedia.org/wiki/Kullback%E2%80%93Leibler_divergence">Kullback-Leibler divergence</a> or KL divergence for short.</p>
+<p>Given that the entropy of a given probability distribution <span class="math inline">p</span> is constant, then <span class="math inline">H(p)</span> must be constant as well. This is why in practice, we will generally seek to minimize the cross entropy between <span class="math inline">p</span> and a predicted distribution <span class="math inline">q</span>, which by extension will minimize the Kullback-Leibler divergence as well.</p>
+<p>Now, we have the tools to know if our model is succeeding or not! Given an estimation, say,</p>
+<p><span class="math display">M(\mathbf{I}) = \left[0, 0, 0.5, 0.5, 0, 0, 0, 0, 0, 0\right]</span></p>
+<p>we will treat our model’s output as a predicted probability distribution of the sample digit’s classification from 0 to 9. Then, we compute the cross entropy between this predction and the true distribution, which will be in the form of a one-hot vector. Supposing the actual digit is 3 in this particular case (<span class="math inline">P(7) = 1</span>):</p>
+<p><span class="math display"> \sum_{x\in \{0,\dots, 9\}} -P(x) \log Q(x) = -P(3) \log(Q(3)) = \log(0.5) \approx 0.301 </span></p>
+<p>Let’s make a few observations before continuing. First, for a one-hot vector, the entropy is 0 (can you see why?). Second, by pretending the correct digit above is <span class="math inline">3</span> and not, say, <span class="math inline">7</span>, we conveniently avoided <span class="math inline">\log 0</span> showing up in the final expression. A common method to avoid this is to add a small <span class="math inline">\epsilon</span> to the log argument to avoid this singularity, but we’ll discuss this in more detail later.</p>
+<h3 id="creating-our-approximation-function-with-a-neural-network">Creating our Approximation Function with a Neural Network</h3>
+<p>Now that we know how to evaluate our model, we’ll need to decide how to go about making predictions in the form of a probability distribution. Our model will need to take as inputs, 28x28 images (which as mentioned before, will be flattened to 784x1 vectors for simplicity). Let’s enumerate the properties our model will need:</p>
+<ol type="1">
+<li>Parameterization - our model will need parameters we can adjust to “fit” the model to the data</li>
+<li>Nonlinearity - it is assuredly not the case that the probability distribution can be modeled with a set of linear equations</li>
+<li>Differentiability - the gradient of our model’s output with respect to any given parameter indicates the <em>impact</em> of that parameter on the final result</li>
+</ol>
+<p>There are an infinite number of functions that fit this criteria, but here, we’ll use a simple feedforward network with a single hidden layer.</p>
+<p><img src="/home/jeremy/developer/nn_in_a_weekend/doc/e3d0e976d71535c548dc519a6e3335282a9174d4.svg" /></p>
+<p>A few quick notes regarding notation: a superscript of the form <span class="math inline">[i]</span> is used to denote the <span class="math inline">i</span>th layer. A subscript is used to denote a particular element within a layer or vector.</p>
+<p>On the far left, we have the input layer with <span class="math inline">784</span> nodes corresponding to each of the 28 by 28 pixels in an individual sample. Each <span class="math inline">x_i^{(0)}</span> is a floating point value between 0 and 1 inclusive. Because the data is encoded with 8 bits of precision, there are 256 possible values for each input. Each of the 784 input values fan out to each of the nodes in the hidden layer without modification.</p>
+<p>In the center hidden layer, we have a variable number of nodes that each receive all 784 inputs, perform some processing, and fan out the result to the output nodes on the far right. That is, each node in the hidden layer transforms a <span class="math inline">\mathbb{R}^{784}</span> vector into a <span class="math inline">\mathbb{R}^n</span> vector. The simplest way to do this is with an <span class="math inline">n\times 784</span> matrix (treating inputs as column vectors). Modeling the hidden layer this way, each of the <span class="math inline">n</span> nodes in the hidden layer is associated with a single row in our <span class="math inline">\mathbb{R}^{n\times 784}</span> matrix. Each entry of this matrix is referred to as a <em>weight</em>.</p>
+<p>We still have two issues we need to address however. First, a matrix provides a linear mapping between two spaces, and linear maps take <span class="math inline">0</span> to <span class="math inline">0</span> (you can visualize such maps as planes through the origin). Thus, such fully-connected layers typically add a <em>bias</em> to each output node to turn the map into an affine map. This enables the model to respond zeroes in the input. Thus, the hidden layer as a whole has now both a weight matrix, and also a bias vector.</p>
+<p>The second issue is that our hidden layer’s now-affine mapping is still linear, and one of our requirements for our approximation function was nonlinearity (a strict prerequisite for universality). Thus, we perform one final non-linear operation the result of the affine map. This is known as the <em>activation function</em>, and an infinite number of choices present itself here. In practice, the <em>rectifier function</em>, defined below, is a perennial choice.</p>
+<p><span class="math display">f(x) = \max(0, x)</span></p>
+<figure>
+<img src="plots/-3911920049797973622.png" class="matplotlib" alt="" />
+</figure>
+<p>The rectifier is popular for having a number of desirable properties.</p>
+<ol type="1">
+<li>Easy to compute</li>
+<li>Easy to differentiate (except at 0, which has not been found to be a problem in practice)</li>
+<li>Sparse activation, which aids in addressing model overfitting</li>
+</ol>
+<p>As our hidden layer units will use this rectifier just before emitting its final output to the next layer, our hidden units may be called <em>rectified linear units</em> or ReLUs for short.</p>
+<p>Summarizing our hidden layer, the output of each unit in the layer can be written as:</p>
+<p><span class="math display">a_i^{[1]} = \max(0, W_{i}^{[1]} \cdot \mathbf{x}^{[0]} + b_i^{[1]})</span></p>
+<p>It’s common to refer to the final activated output of a neural network layer as <span class="math inline">a</span>, and the result of the internal affine map <span class="math inline">z</span>. Using this notation and considering the output of the hidden layer as a whole as a vector quantity, we can write:</p>
+<p><span class="math display">
+\begin{aligned}
+\mathbf{z}^{[1]} &amp;= \mathbf{W}^{[1]}\mathbf{x}^{[0]} + \mathbf{b}^{[1]} \\
+\mathbf{a}^{[1]} &amp;= \max(\mathbf{0}, \mathbf{z}^{[1]}) \\
+\mathbf{a}^{[1]}, \mathbf{b}^{[1]} &amp;\in \mathbb{R}^n \\
+\mathbf{W}^{[1]} &amp;\in \mathbb{R}^{n\times 784} \\
+\mathbf{x}^{[0]} &amp;\in \mathbb{R}^{784}
+\end{aligned}
+</span></p>
+<p>The last layer to consider is the output layer. As with the hidden layer, we need a dimensionality transform, in this case, taking vectors in <span class="math inline">\mathbb{R}^n</span> and mapping them to vectors in <span class="math inline">\mathbb{R}^{10}</span> (corresponding to the 10 possible digits in the target output). As before, we will use an affine map with the appropriately sized weight matrix and bias vector. Here, however, the rectifier isn’t suitable as an activation function because we want to emit a probability distribution. To be a valid probability distribution, each output of the hidden layer must be in the range <span class="math inline">[0, 1]</span>, and the sum of all outputs must equal <span class="math inline">1</span>. The most common activation function used to achieve this is the <em>softmax function</em>:</p>
+<p><span class="math display">\mathrm{softmax}(\mathbf{z})_i = \frac{\exp(z_i)}{\sum_j \exp(z_j)}</span></p>
+<p>Given a vector input <span class="math inline">z</span>, each component of the softmax output (as a vector quantity) is given as per the expression above. The exponential functions conveniently map negative numbers to positive numbers, and the denominator ensures that all outputs will be between 0 and 1, and sum to 1 as desired. There are other reasons why an exponential function is used here, stemming from our choice of a loss function (based on the underpinning notion of maximum-likelihood estimation), but we won’t get into that in too much detail here (consult the further reading section at the end to learn more). Suffice it to say that an additional benefit of the exponential function is its clean interaction with the logarithm used in our choice of loss function, especially when we will need to compute gradients in the next section.</p>
+<p>Summarizing our neural network architecture, with two weight matrices and two bias vectors, we can construct two affine maps which map vectors in <span class="math inline">\mathbb{R}^{784}</span> to <span class="math inline">\mathbb{R}^n</span> to <span class="math inline">\mathbb{R}^{10}</span>. Prior to forwarding the results of one affine map as the input of the next, we employ an activation function to add non-linearity to the model. First, we use a linear rectifier and second, we use a softmax function, ensuring that we end up with a nice discrete probability distribution with 10 possible events corresponding to the 10 digits.</p>
+<p>Our network is small enough that we can actually write out the entire process as a single function using the notation we’ve built so far:</p>
+<p><span class="math display">f(\mathbf{x}^{[0]}) = \mathbf{y}^{[2]} = \mathrm{softmax}\left(\mathbf{W}^{[2]}\left(\max\left(\mathbf{0}, \mathbf{W}^{[1]}\mathbf{x}^{[0]} + \mathbf{b}^{[1]}\right) \right) + \mathbf{b}^{[1]} \right)</span></p>
+<h3 id="optimizing-our-network">Optimizing our network</h3>
+<p>We now have a model given above which can turn our 784 dimensional inputs into a 10-element probability distribution, <em>and</em> we have a way to evaluate how accuracy of each prediction. Next, we need a reliable way to improve the model based on the feedback provided by our loss function. This is known as function <em>optimization</em>, and most methods of model optimization are based on the principle of <em>gradient descent</em>.</p>
+<p>The idea is quite simple. Given a function with a set of parameters which we’ll denote <span class="math inline">\mathbf{\theta}</span>, the partial derivative of that function with respect to a given parameter <span class="math inline">\theta_i \in \mathbf{\theta}</span> tells us the overall <em>impact</em> of <span class="math inline">\theta</span> on the final result. In our model, we have many parameters. Each weight and bias constitutes an individually tunable parameter. Thus, our strategy should be, given a set of input samples, compute the loss our model produces for each sample. Then, compute the partial derivatives of that loss with respect to <em>every parameter</em> in our model. Finally, adjust each parameter in proportion to its impact on the final loss. Proceeding in this fashion <em>guarantees</em> that the model will produce a smaller loss given the same inputs.</p>
+<p>In practice, the size of the input set may be very large, rendering it intractable to evaluate the model on every single training sample before adjusting parameters. Thus, a common strategy is to use <em>stochastic gradient descent</em> (abbrev. SGD) and perform loss-gradient-based adjustments after evaluating smaller batches of samples. Concretely, the MNIST handwritten digits database contains 60,000 training samples. If we were to train our model using gradient descent in the strictest sense, we would execute the following pseudocode:</p>
+<pre><code>model.init()
+
+for i in num_training_cycles
+    loss &lt;- 0
+
+    for n in 60000
+        x &lt;- MNIST.data[n]
+        y &lt;- model.predict(x)
+        loss += loss(y, MNIST.labels[n])
+    
+    model.gradient_descent(loss)</code></pre>
+<p>In contrast, SGD pseudocode would look like:</p>
+<pre><code>model.init()
+
+for i in num_batches
+    loss &lt;- 0
+    for j in batch_size
+        x &lt;- MNIST.data[n]
+        y &lt;- model.predict(x)
+        loss += loss(y, MNIST.labels[n])
+    
+    model.gradient_descent(loss)</code></pre>
+<p>SGD is very similar, but the batch size can be much smaller than the amount of training data available. This enables the model to get more frequent updates and waste fewer cycles especially at the start of training when the model is likely wildly inaccurate.</p>
+<p>When it comes time to compute the gradients, we are fortunate to have made the prescient choice of constructing our model solely with elementary functions in a manner conducive to relatively painless differentiation. However, we still must exercise care as there is plenty of bookkeeping involved. We will evaluate loss-gradients with respect to individual parameters when we walkthrough the implementation later, but for now, let’s establish a few preliminary results.</p>
+<p>Recall that our choice of loss function was the categorical cross entropy function, reproduced below:</p>
+<p><span class="math display">f(\mathbf{y}) = -\sum_{x\in X} \hat{y}_x \log{y_x}</span></p>
+<p><span class="math inline">X</span> corresponds to set of possible outcomes (here, <span class="math inline">X</span> is the set of digits from 0 to 9). The quantities <span class="math inline">\hat{y}_x</span> are the elements of the one-hot vector corresponding to the correct outcome, and <span class="math inline">\mathbf{y}</span> is the discrete probability distribution emitted by our model. We compute <span class="math inline">\partial f(\mathbf{y})/\partial y_x</span> like so:</p>
+<p><span class="math display">\frac{\partial f(\mathbf{y})}{\partial y_x} = -\frac{\hat{y}_x}{y_x}</span></p>
+<p>Notice that for a one-hot vector, this partial derivative vanishes whenever <span class="math inline">x</span> corresponds to an incorrect outcome.</p>
+<p>Working backwards in our model, we next provide the partial derivative of the softmax function:</p>
+<p><span class="math display">
+\begin{aligned}
+\mathrm{softmax}(\mathbf{z})_i &amp;= \frac{\exp{z_i}}{\sum_j \exp{z_j}} \\
+\frac{\partial \left(\mathrm{softmax}(\mathbf{z})_i\right)}{\partial z_k} &amp;=
+\begin{cases}
+\frac{\left(\sum_j\exp{z_j}\right)\exp{z_i} - \exp{2z_i}}{\left(\sum_j\exp{z_j}\right)^2}&amp; i = k \\
+\frac{-\exp{z_i}\exp{z_k}}{\left(\sum_j\exp{z_j}\right)^2}&amp; i \neq k
+\end{cases} \\
+&amp;= \begin{cases}
+\mathrm{softmax}(\mathbf{z})_i\left(1 - \mathrm{softmax}(\mathbf{z})_i\right) &amp; i = k \\
+-\mathrm{softmax}(\mathbf{z})_i \mathrm{softmax}(\mathbf{z})_k &amp; i \neq k
+\end{cases}
+\end{aligned}
+</span></p>
+<p>The last set of equations follow from factorizing and rearranging the expressions preceding it. It’s often confusing to newer practitioners that the partial derivative of softmax needs this unique treatment. The key observation is that softmax is a vector-function. It accepts a vector as an input and emits a vector as an output. It also “mixes” the input components, thereby imposing a functional dependence of <em>every output component</em> on <em>every input component</em>. The lone <span class="math inline">\exp{z_i}</span> in the numerator of the softmax equation creates an asymmetric dependence of the output component on the input components.</p>
+<p>Finally, let’s consider the partial derivative of the linear rectifier.</p>
+<p><span class="math display">
+\begin{aligned}
+\mathrm{ReLU}(z) &amp;= \max(0, z) \\
+\frac{\partial \mathrm{ReLU}(z)}{\partial z} &amp;=
+\begin{cases}
+0 &amp; z &lt; 0 \\
+\mathrm{undefined} &amp; z = 0 \\
+z &amp; z &gt; 0
+\end{cases}
+\end{aligned}
+</span></p>
+<p>While the partial derivative <em>exactly</em> at 0 is undefined, in practice, the derivative is simply assigned to 0. Why the non-differentiability at 0 isn’t an issue has been a subject of practical debate for a long time. Here is a simple line of thinking to justify the apparent issue. Consider a rectifier function that is nudged <em>ever so slightly</em> to the right such that the inflection point is <span class="math inline">\epsilon / 2</span>, where <span class="math inline">\epsilon</span> is the smallest positive floating point number the machine can represent. In this case, the model will never produce a value that sits directly on this inflection point, and as far as the computer is concerned, we never encounter a point where this function is non-differentiable. We can even imagine an infinitesimal curve that smooths out the function at that inflection point if we want. Either way, experimentally, the linear rectifier remains one of the most effective activation functions for reasons mentioned, so we have no reason to discredit it over a technicality.</p>
+<p>Now that we can compute partial derivatives of all the nonlinear functions in our neural network (and presumbly the linear functions as well), we are prepared to compute loss gradients with respect to any parameter in the network. Our tool of choice is the venerable chain rule of calculus:</p>
+<p><span class="math display">\left.\frac{\partial f(g(x))}{\partial x}\right\rvert_x = \left.\frac{\partial f}{\partial g}\right\rvert_{g(x)} \left.\frac{\partial g}{\partial x}\right\rvert_x</span></p>
+<p>This gives us the partial derivative of a composite function <span class="math inline">f\circ g</span> evaluated at a particular value of <span class="math inline">x</span>. Our model itself is a series of composite functions, and as we can now compute the partials of each individual component in the model, we are ready to begin implementation in the next section.</p>
+<h2 id="setting-up">Setting up</h2>
+<p>Our project will leverage <a href="https://cmake.org">CMake</a> as the meta-build system to support as many operating systems and compilers as possible. A modern C++ compiler will also be needed to compile the code. As of this writing, the code has been tested with GCC 10.1.0 and Clang 10.0.0. You should feel free to simply adapt the code to your compiler and build system of choice. To emphasize the independent nature of this project, <em>no further dependencies are needed</em>. At your discretion, you may opt to use external testing frameworks, matrix and math libraries, data structures, or any other external dependency as you see fit. If you’re a newer C++ practitioner, you are welcome to model the structure of the final project hosted on Github <a href="https://github.com/jeremyong/nn_in_a_weekend">here</a>.</p>
+<p>In addition, you will need the data hosted on the MNIST database website linked <a href="http://yann.lecun.com/exdb/mnist/">here</a>. The four files available there consist of training images, training labels, test images, and test labels.</p>
+<p>It is highly recommended that you attempt to clone the repository and get things running (instructions on the README will always be kept up to date). The code presented in this article will not be completely exhaustive, but will touch on all the major points, eschewing only various rudimentary helpers functions or uninteresting details for brevity. Alternatively, a valid approach may be to simply follow along the implementation notes below and attempt to blaze your own trail. Both branches are viable approaches for learning.</p>
+<h2 id="implementation">Implementation</h2>
+<h3 id="the-computational-graph">The Computational Graph</h3>
+<p>The network wil will be constructing is purely sequential. Inputs flow from left to right and the only connections made are between one layer and the layer immediately succeeding it. In reality, many production-grade neural networks specialized for computer vision, natural language processing, and other domains rely on architectures that are non-sequential. Examples include ResNet, which introduces connections between layers that are not adjacent, and various recurrent neural networks, which have a cyclic topology (outputs of the model are fed back as inputs to the model). Thus, it’s useful to think of the model as a whole as <em>computational graph</em>. While we won’t be employing any complicated computational graph topologies here, we will still structure the code with this notion in mind. Each layer of our network will be modeled as a <code>Node</code> with data flowing forwards and backwards through the node during training. Here is the interface we’ll use.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true"></a><span class="pp">#include </span><span class="im">&lt;cstdint&gt;</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true"></a><span class="pp">#include </span><span class="im">&lt;string&gt;</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true"></a><span class="pp">#include </span><span class="im">&lt;vector&gt;</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true"></a></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true"></a><span class="kw">using</span> <span class="dt">num_t</span> = <span class="dt">float</span>;</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true"></a><span class="kw">using</span> <span class="dt">rne_t</span> = <span class="bu">std::</span>mt19937;</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true"></a></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true"></a><span class="co">// To be defined later. This class encapsulates all the nodes in our graph </span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true"></a><span class="kw">class</span> Model;</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true"></a></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true"></a><span class="kw">class</span> Node</span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true"></a>{</span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true"></a><span class="kw">public</span>:</span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true"></a>    Node(Model&amp; model, <span class="bu">std::</span>string name);</span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true"></a>    </span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true"></a>    <span class="co">// Nodes must describe how they should be initialized</span></span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true"></a>    <span class="kw">virtual</span> <span class="dt">void</span> init(<span class="dt">rne_t</span>&amp; rne) = <span class="dv">0</span>;</span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true"></a>    </span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true"></a>    <span class="co">// During forward propagation, nodes transform input data and feed results</span></span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true"></a>    <span class="co">// to all subsequent nodes</span></span>
+<span id="cb3-21"><a href="#cb3-21" aria-hidden="true"></a>    <span class="kw">virtual</span> <span class="dt">void</span> forward(<span class="dt">num_t</span>* inputs) = <span class="dv">0</span>;</span>
+<span id="cb3-22"><a href="#cb3-22" aria-hidden="true"></a></span>
+<span id="cb3-23"><a href="#cb3-23" aria-hidden="true"></a>    <span class="co">// During reverse propagation, nodes receive loss gradients to its previous</span></span>
+<span id="cb3-24"><a href="#cb3-24" aria-hidden="true"></a>    <span class="co">// outputs and compute gradients with respect to each tunable parameter</span></span>
+<span id="cb3-25"><a href="#cb3-25" aria-hidden="true"></a>    <span class="kw">virtual</span> <span class="dt">void</span> reverse(<span class="dt">num_t</span>* gradients) = <span class="dv">0</span>;</span>
+<span id="cb3-26"><a href="#cb3-26" aria-hidden="true"></a>    </span>
+<span id="cb3-27"><a href="#cb3-27" aria-hidden="true"></a>    <span class="co">// If the node has tunable parameters, this method should be overridden</span></span>
+<span id="cb3-28"><a href="#cb3-28" aria-hidden="true"></a>    <span class="co">// to reflect the quantity of tunable parameters</span></span>
+<span id="cb3-29"><a href="#cb3-29" aria-hidden="true"></a>    <span class="kw">virtual</span> <span class="dt">size_t</span> param_count() <span class="at">const</span> <span class="kw">noexcept</span> { <span class="cf">return</span> <span class="dv">0</span>; }</span>
+<span id="cb3-30"><a href="#cb3-30" aria-hidden="true"></a>    </span>
+<span id="cb3-31"><a href="#cb3-31" aria-hidden="true"></a>    <span class="co">// Accessor for parameter by index</span></span>
+<span id="cb3-32"><a href="#cb3-32" aria-hidden="true"></a>    <span class="kw">virtual</span> <span class="dt">num_t</span>* param(<span class="dt">size_t</span> index) { <span class="cf">return</span> <span class="kw">nullptr</span>; }</span>
+<span id="cb3-33"><a href="#cb3-33" aria-hidden="true"></a>    </span>
+<span id="cb3-34"><a href="#cb3-34" aria-hidden="true"></a>    <span class="co">// Access for loss-gradient with respect to a parameter specified by index</span></span>
+<span id="cb3-35"><a href="#cb3-35" aria-hidden="true"></a>    <span class="kw">virtual</span> <span class="dt">num_t</span>* gradient(<span class="dt">size_t</span> index) { <span class="cf">return</span> <span class="kw">nullptr</span>; }</span>
+<span id="cb3-36"><a href="#cb3-36" aria-hidden="true"></a>    </span>
+<span id="cb3-37"><a href="#cb3-37" aria-hidden="true"></a>    <span class="co">// Human-readable name for debugging purposes</span></span>
+<span id="cb3-38"><a href="#cb3-38" aria-hidden="true"></a>    <span class="bu">std::</span>string <span class="at">const</span>&amp; name() <span class="at">const</span> <span class="kw">noexcept</span> { <span class="cf">return</span> <span class="va">name_</span>; }</span>
+<span id="cb3-39"><a href="#cb3-39" aria-hidden="true"></a>    </span>
+<span id="cb3-40"><a href="#cb3-40" aria-hidden="true"></a>    <span class="co">// Information dump for debugging purposes</span></span>
+<span id="cb3-41"><a href="#cb3-41" aria-hidden="true"></a>    <span class="kw">virtual</span> <span class="dt">void</span> print() <span class="at">const</span> = <span class="dv">0</span>;</span>
+<span id="cb3-42"><a href="#cb3-42" aria-hidden="true"></a></span>
+<span id="cb3-43"><a href="#cb3-43" aria-hidden="true"></a><span class="kw">protected</span>:</span>
+<span id="cb3-44"><a href="#cb3-44" aria-hidden="true"></a>    <span class="kw">friend</span> <span class="kw">class</span> Model;</span>
+<span id="cb3-45"><a href="#cb3-45" aria-hidden="true"></a>    </span>
+<span id="cb3-46"><a href="#cb3-46" aria-hidden="true"></a>    Model&amp; <span class="va">model_</span>;</span>
+<span id="cb3-47"><a href="#cb3-47" aria-hidden="true"></a>    <span class="bu">std::</span>string <span class="va">name_</span>;</span>
+<span id="cb3-48"><a href="#cb3-48" aria-hidden="true"></a>    <span class="co">// Nodes that precede this node in the computational graph</span></span>
+<span id="cb3-49"><a href="#cb3-49" aria-hidden="true"></a>    <span class="bu">std::</span>vector&lt;Node*&gt; <span class="va">antecedents_</span>;</span>
+<span id="cb3-50"><a href="#cb3-50" aria-hidden="true"></a>    <span class="co">// Nodes that succeed this node in the computational graph</span></span>
+<span id="cb3-51"><a href="#cb3-51" aria-hidden="true"></a>    <span class="bu">std::</span>vector&lt;Node*&gt; <span class="va">subsequents_</span>;</span>
+<span id="cb3-52"><a href="#cb3-52" aria-hidden="true"></a>};</span></code></pre></div>
+<p>The bulwark of the implementation will consist of implementing this interface for all the nodes in our network. We will need to implement this interface for each of the nodes shown in the diagram below.</p>
+<p><img src="/home/jeremy/developer/nn_in_a_weekend/doc/cb34710dce878a77b3fd5f3e7e4746403aaaefcc.svg" /></p>
+<p>The first node (<code>MNIST</code>) will be responsible for acquiring new training samples and feeding it to the next layer for processing. In addition, it will provide an additional interface the final categorical cross-entropy loss node will use to query the correct label for that sample. The hidden node will perform the affine transform and apply the linear rectification activation. The output node will also perform an affine transform, but will then apply the softmax function. In our project, the hidden and output nodes will share the same implementation that exposes a configurable activation function. Finally, the loss node will compute the loss of the predicted distribution based on the queried label for a given sample.</p>
+<p>In the figure above, solid arrow from left to right indicate data flow during the <em>feed forward</em> or <em>evaluation</em> portion of the model’s execution. Each solid arrow corresponds to a data vector emitted by the source, and ingested by the destination. The dashed arrows from right to left indicate data flow during the <em>backpropagation</em> portion of the algorithm. These arrows correspond to gradient vectors of the evaluated loss with respect to the outputs. For example, as seen above, the hidden node is expected to forward data to the output node (<span class="math inline">\mathbf{a}^{[1]}</span>). Later, after the model prediction has been computed and the loss evaluated, the gradient of the loss with respect to those outputs is expected (<span class="math inline">\partial L/\partial a^{[1]}_i</span> for each <span class="math inline">a_i^{[1]}</span> in <span class="math inline">\mathbf{a}^{[1]}</span>).</p>
+<p>When simply evaluating data (without training), the final loss node will simply be omitted from the graph. In addition, no back-propagation of gradients will occur as the model parameters are ossified during evaluation.</p>
+<p>The model class interface shown below will be used to house all the nodes in the computational graph, and provide various routines that are useful for operating over all constituent nodes as a collection.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true"></a><span class="kw">class</span> Model</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true"></a>{</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true"></a><span class="kw">public</span>:</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true"></a>    Model(<span class="bu">std::</span>string name);</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true"></a>    </span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true"></a>    <span class="co">// Add a node to the model, forwarding arguments to the node&#39;s constructor</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true"></a>    <span class="kw">template</span> &lt;<span class="kw">typename</span> <span class="dt">Node_t</span>, <span class="kw">typename</span>... T&gt;</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true"></a>    <span class="dt">Node_t</span>&amp; add_node(T&amp;&amp;... args)</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true"></a>    {</span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true"></a>        <span class="va">nodes_</span>.emplace_back(</span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true"></a>            <span class="bu">std::</span>make_unique&lt;<span class="dt">Node_t</span>&gt;(*<span class="kw">this</span>, <span class="bu">std::</span>forward&lt;T&gt;(args)...));</span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true"></a>        <span class="cf">return</span> <span class="kw">reinterpret_cast</span>&lt;<span class="dt">Node_t</span>&amp;&gt;(*<span class="va">nodes_</span>.back());</span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true"></a>    }</span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true"></a></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true"></a>    <span class="co">// Create a dependency between two constituent nodes</span></span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true"></a>    <span class="dt">void</span> create_edge(Node&amp; dst, Node&amp; src);</span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true"></a></span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true"></a>    <span class="co">// Initialize the parameters of all nodes with the provided seed. If the</span></span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true"></a>    <span class="co">// seed is 0, a new random seed is chosen instead. Returns the seed used.</span></span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true"></a>    <span class="dt">rne_t</span>::<span class="dt">result_type</span> init(<span class="dt">rne_t</span>::<span class="dt">result_type</span> seed = <span class="dv">0</span>);</span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true"></a></span>
+<span id="cb4-22"><a href="#cb4-22" aria-hidden="true"></a>    <span class="co">// Adjust all model parameters of constituent nodes using the</span></span>
+<span id="cb4-23"><a href="#cb4-23" aria-hidden="true"></a>    <span class="co">// provided optimizer (shown later)</span></span>
+<span id="cb4-24"><a href="#cb4-24" aria-hidden="true"></a>    <span class="dt">void</span> train(Optimizer&amp; optimizer);</span>
+<span id="cb4-25"><a href="#cb4-25" aria-hidden="true"></a></span>
+<span id="cb4-26"><a href="#cb4-26" aria-hidden="true"></a>    <span class="bu">std::</span>string <span class="at">const</span>&amp; name() <span class="at">const</span> <span class="kw">noexcept</span></span>
+<span id="cb4-27"><a href="#cb4-27" aria-hidden="true"></a>    {</span>
+<span id="cb4-28"><a href="#cb4-28" aria-hidden="true"></a>        <span class="cf">return</span> <span class="va">name_</span>;</span>
+<span id="cb4-29"><a href="#cb4-29" aria-hidden="true"></a>    }</span>
+<span id="cb4-30"><a href="#cb4-30" aria-hidden="true"></a></span>
+<span id="cb4-31"><a href="#cb4-31" aria-hidden="true"></a>    <span class="dt">void</span> print() <span class="at">const</span>;</span>
+<span id="cb4-32"><a href="#cb4-32" aria-hidden="true"></a></span>
+<span id="cb4-33"><a href="#cb4-33" aria-hidden="true"></a>    <span class="co">// Routines for saving and loading model parameters to and from disk</span></span>
+<span id="cb4-34"><a href="#cb4-34" aria-hidden="true"></a>    <span class="dt">void</span> save(<span class="bu">std::</span>ofstream&amp; out);</span>
+<span id="cb4-35"><a href="#cb4-35" aria-hidden="true"></a>    <span class="dt">void</span> load(<span class="bu">std::</span>ifstream&amp; in);</span>
+<span id="cb4-36"><a href="#cb4-36" aria-hidden="true"></a></span>
+<span id="cb4-37"><a href="#cb4-37" aria-hidden="true"></a><span class="kw">private</span>:</span>
+<span id="cb4-38"><a href="#cb4-38" aria-hidden="true"></a>    <span class="kw">friend</span> <span class="kw">class</span> Node;</span>
+<span id="cb4-39"><a href="#cb4-39" aria-hidden="true"></a></span>
+<span id="cb4-40"><a href="#cb4-40" aria-hidden="true"></a>    <span class="bu">std::</span>string <span class="va">name_</span>;</span>
+<span id="cb4-41"><a href="#cb4-41" aria-hidden="true"></a>    <span class="bu">std::</span>vector&lt;<span class="bu">std::</span>unique_ptr&lt;Node&gt;&gt; <span class="va">nodes_</span>;</span>
+<span id="cb4-42"><a href="#cb4-42" aria-hidden="true"></a>};</span></code></pre></div>
+<h3 id="training-data-and-labels">Training Data and Labels</h3>
+<p>All machine learning pipelines must consider how to ingest data and labels. Data refers to the information the model is expected to use to make inferences and predictions. Labels correspond to the “correct answer” for each data sample, used to compute losses and train the model. The interface of the MNIST data parser is shows below as an implemented <code>Node</code> class.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true"></a><span class="kw">class</span> MNIST : <span class="kw">public</span> Node</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true"></a>{</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true"></a><span class="kw">public</span>:</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true"></a>    <span class="kw">constexpr</span> <span class="at">static</span> <span class="dt">size_t</span> DIM = <span class="dv">28</span> * <span class="dv">28</span>;</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true"></a>    </span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true"></a>    <span class="co">// The constructor receives an input filestream corresponding to the</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true"></a>    <span class="co">// data samples and labels</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true"></a>    MNIST(Model&amp; model, <span class="bu">std::</span>ifstream&amp; images, <span class="bu">std::</span>ifstream&amp; labels);</span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true"></a>    </span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true"></a>    <span class="co">// This is an input node and has no parameters to initialize</span></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true"></a>    <span class="dt">void</span> init(<span class="dt">rne_t</span>&amp;) <span class="kw">override</span> {}</span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true"></a>    </span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true"></a>    <span class="co">// Read the next sample and label and forward the data</span></span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true"></a>    <span class="dt">void</span> forward(<span class="dt">num_t</span>* data = <span class="kw">nullptr</span>) <span class="kw">override</span>;</span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true"></a></span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true"></a>    <span class="co">// No optimization is done in this node so this is a no-op</span></span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true"></a>    <span class="dt">void</span> reverse(<span class="dt">num_t</span>* gradients = <span class="kw">nullptr</span>) <span class="kw">override</span> {}</span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true"></a>    </span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true"></a>    <span class="dt">void</span> print() <span class="at">const</span> <span class="kw">override</span>;</span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true"></a></span>
+<span id="cb5-21"><a href="#cb5-21" aria-hidden="true"></a>    <span class="co">// Consume the next sample and label from the file streams</span></span>
+<span id="cb5-22"><a href="#cb5-22" aria-hidden="true"></a>    <span class="dt">void</span> read_next();</span>
+<span id="cb5-23"><a href="#cb5-23" aria-hidden="true"></a>    </span>
+<span id="cb5-24"><a href="#cb5-24" aria-hidden="true"></a>    <span class="co">// Accessor for the most recently read sample</span></span>
+<span id="cb5-25"><a href="#cb5-25" aria-hidden="true"></a>    <span class="dt">num_t</span> <span class="at">const</span>* data() <span class="at">const</span> <span class="kw">noexcept</span></span>
+<span id="cb5-26"><a href="#cb5-26" aria-hidden="true"></a>    {</span>
+<span id="cb5-27"><a href="#cb5-27" aria-hidden="true"></a>        <span class="cf">return</span> <span class="va">data_</span>;</span>
+<span id="cb5-28"><a href="#cb5-28" aria-hidden="true"></a>    }</span>
+<span id="cb5-29"><a href="#cb5-29" aria-hidden="true"></a>    </span>
+<span id="cb5-30"><a href="#cb5-30" aria-hidden="true"></a>    <span class="co">// Accessor for the most recently read label</span></span>
+<span id="cb5-31"><a href="#cb5-31" aria-hidden="true"></a>    <span class="dt">num_t</span>* label() <span class="at">const</span> <span class="kw">noexcept</span></span>
+<span id="cb5-32"><a href="#cb5-32" aria-hidden="true"></a>    {</span>
+<span id="cb5-33"><a href="#cb5-33" aria-hidden="true"></a>        <span class="cf">return</span> <span class="va">label_</span>;</span>
+<span id="cb5-34"><a href="#cb5-34" aria-hidden="true"></a>    }</span>
+<span id="cb5-35"><a href="#cb5-35" aria-hidden="true"></a>    </span>
+<span id="cb5-36"><a href="#cb5-36" aria-hidden="true"></a>    <span class="co">// Quick ASCII visualization of the last digit read</span></span>
+<span id="cb5-37"><a href="#cb5-37" aria-hidden="true"></a>    <span class="dt">void</span> print_last();</span>
+<span id="cb5-38"><a href="#cb5-38" aria-hidden="true"></a>    </span>
+<span id="cb5-39"><a href="#cb5-39" aria-hidden="true"></a><span class="kw">private</span>:</span>
+<span id="cb5-40"><a href="#cb5-40" aria-hidden="true"></a>    <span class="bu">std::</span>ifstream&amp; <span class="va">images_</span>;</span>
+<span id="cb5-41"><a href="#cb5-41" aria-hidden="true"></a>    <span class="bu">std::</span>ifstream&amp; <span class="va">labels_</span>;</span>
+<span id="cb5-42"><a href="#cb5-42" aria-hidden="true"></a>    <span class="dt">uint32_t</span> <span class="va">image_count_</span>;</span>
+<span id="cb5-43"><a href="#cb5-43" aria-hidden="true"></a></span>
+<span id="cb5-44"><a href="#cb5-44" aria-hidden="true"></a>    <span class="dt">char</span> <span class="va">buf_</span>[DIM];</span>
+<span id="cb5-45"><a href="#cb5-45" aria-hidden="true"></a>    <span class="dt">num_t</span> <span class="va">data_</span>[DIM];</span>
+<span id="cb5-46"><a href="#cb5-46" aria-hidden="true"></a>    <span class="dt">num_t</span> <span class="va">label_</span>[<span class="dv">10</span>];</span>
+<span id="cb5-47"><a href="#cb5-47" aria-hidden="true"></a>};</span></code></pre></div>
+<p>In the constructor, we must verify that the files passed as arguments are valid MNIST data and label files. Both files start with distinct “magic values” as a quick sanity check. The sample file starts with 2051 encoded as a 4-byte big-endian unsigned integer, whereas the label file starts with 2049. For the data file, the magic number is followed by the image count and image dimensions. The label file magic number is followed by the label count (expected to match the image count).</p>
+<p>To consume big-endian unsigned integers from the file stream, we’ll use a simple routine:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true"></a><span class="dt">void</span> read_be(<span class="bu">std::</span>ifstream&amp; in, <span class="dt">uint32_t</span>* out)</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true"></a>{</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true"></a>    <span class="dt">char</span>* buf = <span class="kw">reinterpret_cast</span>&lt;<span class="dt">char</span>*&gt;(out);</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true"></a>    in.read(buf, <span class="dv">4</span>);</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true"></a></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true"></a>    <span class="bu">std::</span>swap(buf[<span class="dv">0</span>], buf[<span class="dv">3</span>]);</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true"></a>    <span class="bu">std::</span>swap(buf[<span class="dv">1</span>], buf[<span class="dv">2</span>]);</span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true"></a>}</span></code></pre></div>
+<p>If you happen to be using a big-endian processor, you will not need to perform the byte swaps, but most desktop and mobile architectures are little-endian.</p>
+<p>The implementation that parses the magic numbers and various other descriptors is produced below:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true"></a>MNIST::MNIST(Model&amp; model, <span class="bu">std::</span>ifstream&amp; images, <span class="bu">std::</span>ifstream&amp; labels)</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true"></a>    : Node{model, <span class="st">&quot;MNIST input&quot;</span>}</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true"></a>    , <span class="va">images_</span>{images}</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true"></a>    , <span class="va">labels_</span>{labels}</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true"></a>{</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true"></a>    <span class="co">// Confirm that passed input file streams are well-formed MNIST data sets</span></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true"></a>    <span class="dt">uint32_t</span> image_magic;</span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true"></a>    read_be(images, &amp;image_magic);</span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true"></a>    <span class="cf">if</span> (image_magic != <span class="dv">2051</span>)</span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true"></a>    {</span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true"></a>        <span class="cf">throw</span> <span class="bu">std::</span>runtime_error{<span class="st">&quot;Images file appears to be malformed&quot;</span>};</span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true"></a>    }</span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true"></a>    read_be(images, &amp;<span class="va">image_count_</span>);</span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true"></a></span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true"></a>    <span class="dt">uint32_t</span> labels_magic;</span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true"></a>    read_be(labels, &amp;labels_magic);</span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true"></a>    <span class="cf">if</span> (labels_magic != <span class="dv">2049</span>)</span>
+<span id="cb7-18"><a href="#cb7-18" aria-hidden="true"></a>    {</span>
+<span id="cb7-19"><a href="#cb7-19" aria-hidden="true"></a>        <span class="cf">throw</span> <span class="bu">std::</span>runtime_error{<span class="st">&quot;Images file appears to be malformed&quot;</span>};</span>
+<span id="cb7-20"><a href="#cb7-20" aria-hidden="true"></a>    }</span>
+<span id="cb7-21"><a href="#cb7-21" aria-hidden="true"></a></span>
+<span id="cb7-22"><a href="#cb7-22" aria-hidden="true"></a>    <span class="dt">uint32_t</span> label_count;</span>
+<span id="cb7-23"><a href="#cb7-23" aria-hidden="true"></a>    read_be(labels, &amp;label_count);</span>
+<span id="cb7-24"><a href="#cb7-24" aria-hidden="true"></a>    <span class="cf">if</span> (label_count != <span class="va">image_count_</span>)</span>
+<span id="cb7-25"><a href="#cb7-25" aria-hidden="true"></a>    {</span>
+<span id="cb7-26"><a href="#cb7-26" aria-hidden="true"></a>        <span class="cf">throw</span> <span class="bu">std::</span>runtime_error(</span>
+<span id="cb7-27"><a href="#cb7-27" aria-hidden="true"></a>            <span class="st">&quot;Label count did not match the number of images supplied&quot;</span>);</span>
+<span id="cb7-28"><a href="#cb7-28" aria-hidden="true"></a>    }</span>
+<span id="cb7-29"><a href="#cb7-29" aria-hidden="true"></a></span>
+<span id="cb7-30"><a href="#cb7-30" aria-hidden="true"></a>    <span class="dt">uint32_t</span> rows;</span>
+<span id="cb7-31"><a href="#cb7-31" aria-hidden="true"></a>    <span class="dt">uint32_t</span> columns;</span>
+<span id="cb7-32"><a href="#cb7-32" aria-hidden="true"></a>    read_be(images, &amp;rows);</span>
+<span id="cb7-33"><a href="#cb7-33" aria-hidden="true"></a>    read_be(images, &amp;columns);</span>
+<span id="cb7-34"><a href="#cb7-34" aria-hidden="true"></a>    <span class="cf">if</span> (rows != <span class="dv">28</span> || columns != <span class="dv">28</span>)</span>
+<span id="cb7-35"><a href="#cb7-35" aria-hidden="true"></a>    {</span>
+<span id="cb7-36"><a href="#cb7-36" aria-hidden="true"></a>        <span class="cf">throw</span> <span class="bu">std::</span>runtime_error{</span>
+<span id="cb7-37"><a href="#cb7-37" aria-hidden="true"></a>            <span class="st">&quot;Expected 28x28 images, non-MNIST data supplied&quot;</span>};</span>
+<span id="cb7-38"><a href="#cb7-38" aria-hidden="true"></a>    }</span>
+<span id="cb7-39"><a href="#cb7-39" aria-hidden="true"></a></span>
+<span id="cb7-40"><a href="#cb7-40" aria-hidden="true"></a>    printf(<span class="st">&quot;Loaded images file with </span><span class="sc">%d</span><span class="st"> entries</span><span class="sc">\n</span><span class="st">&quot;</span>, <span class="va">image_count_</span>);</span>
+<span id="cb7-41"><a href="#cb7-41" aria-hidden="true"></a>}</span></code></pre></div>
+<p>Next, let’s implement the <code>MNIST::read_next</code>, which will consume the next sample and label from the file streams:</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true"></a><span class="dt">void</span> MNIST::read_next()</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true"></a>{</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true"></a>    <span class="va">images_</span>.read(<span class="va">buf_</span>, DIM);</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true"></a>    <span class="dt">num_t</span> inv = <span class="dt">num_t</span>{<span class="fl">1.0</span>} / <span class="dt">num_t</span>{<span class="fl">255.0</span>};</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true"></a>    <span class="cf">for</span> (<span class="dt">size_t</span> i = <span class="dv">0</span>; i != DIM; ++i)</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true"></a>    {</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true"></a>        <span class="va">data_</span>[i] = <span class="kw">static_cast</span>&lt;<span class="dt">uint8_t</span>&gt;(<span class="va">buf_</span>[i]) * inv;</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true"></a>    }</span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true"></a></span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true"></a>    <span class="dt">char</span> label;</span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true"></a>    <span class="va">labels_</span>.read(&amp;label, <span class="dv">1</span>);</span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true"></a></span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true"></a>    <span class="cf">for</span> (<span class="dt">size_t</span> i = <span class="dv">0</span>; i != <span class="dv">10</span>; ++i)</span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true"></a>    {</span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true"></a>        <span class="va">label_</span>[i] = <span class="dt">num_t</span>{<span class="fl">0.0</span>};</span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true"></a>    }</span>
+<span id="cb8-17"><a href="#cb8-17" aria-hidden="true"></a>    <span class="va">label_</span>[<span class="kw">static_cast</span>&lt;<span class="dt">uint8_t</span>&gt;(label)] = <span class="dt">num_t</span>{<span class="fl">1.0</span>};</span>
+<span id="cb8-18"><a href="#cb8-18" aria-hidden="true"></a>}</span></code></pre></div>
+<p>For the labels, note that the label is encoded as a single unsigned digit, but we convert it to a 1-hot encoding for loss computation purposes later. If your application can assume that the labels will be one-hot encoded, this conversion may not be necessary and a more efficient implementation is possible.</p>
+<p>To verify our work, let’s write up a quick-and-dirty ASCII printer for the last read digit and try our parser out. If you have a rendering backend (written in say, Vulkan, D3D12, OpenGL, etc.) at your disposal, you may wish to use that instead for a cleaner visualization.</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true"></a><span class="dt">void</span> MNIST::print_last()</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true"></a>{</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true"></a>    <span class="cf">for</span> (<span class="dt">size_t</span> i = <span class="dv">0</span>; i != <span class="dv">10</span>; ++i)</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true"></a>    {</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true"></a>        <span class="cf">if</span> (<span class="va">label_</span>[i] == <span class="dt">num_t</span>{<span class="fl">1.0</span>})</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true"></a>        {</span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true"></a>            printf(<span class="st">&quot;This is a </span><span class="sc">%zu</span><span class="st">:</span><span class="sc">\n</span><span class="st">&quot;</span>, i);</span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true"></a>            <span class="cf">break</span>;</span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true"></a>        }</span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true"></a>    }</span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true"></a></span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true"></a>    <span class="cf">for</span> (<span class="dt">size_t</span> i = <span class="dv">0</span>; i != <span class="dv">28</span>; ++i)</span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true"></a>    {</span>
+<span id="cb9-14"><a href="#cb9-14" aria-hidden="true"></a>        <span class="dt">size_t</span> offset = i * <span class="dv">28</span>;</span>
+<span id="cb9-15"><a href="#cb9-15" aria-hidden="true"></a>        <span class="cf">for</span> (<span class="dt">size_t</span> j = <span class="dv">0</span>; j != <span class="dv">28</span>; ++j)</span>
+<span id="cb9-16"><a href="#cb9-16" aria-hidden="true"></a>        {</span>
+<span id="cb9-17"><a href="#cb9-17" aria-hidden="true"></a>            <span class="cf">if</span> (<span class="va">data_</span>[offset + j] &gt; <span class="dt">num_t</span>{<span class="fl">0.5</span>})</span>
+<span id="cb9-18"><a href="#cb9-18" aria-hidden="true"></a>            {</span>
+<span id="cb9-19"><a href="#cb9-19" aria-hidden="true"></a>                <span class="cf">if</span> (<span class="va">data_</span>[offset + j] &gt; <span class="dt">num_t</span>{<span class="fl">0.9</span>})</span>
+<span id="cb9-20"><a href="#cb9-20" aria-hidden="true"></a>                {</span>
+<span id="cb9-21"><a href="#cb9-21" aria-hidden="true"></a>                    printf(<span class="st">&quot;#&quot;</span>);</span>
+<span id="cb9-22"><a href="#cb9-22" aria-hidden="true"></a>                }</span>
+<span id="cb9-23"><a href="#cb9-23" aria-hidden="true"></a>                <span class="cf">else</span> <span class="cf">if</span> (<span class="va">data_</span>[offset + j] &gt; <span class="dt">num_t</span>{<span class="fl">0.7</span>})</span>
+<span id="cb9-24"><a href="#cb9-24" aria-hidden="true"></a>                {</span>
+<span id="cb9-25"><a href="#cb9-25" aria-hidden="true"></a>                    printf(<span class="st">&quot;*&quot;</span>);</span>
+<span id="cb9-26"><a href="#cb9-26" aria-hidden="true"></a>                }</span>
+<span id="cb9-27"><a href="#cb9-27" aria-hidden="true"></a>                <span class="cf">else</span></span>
+<span id="cb9-28"><a href="#cb9-28" aria-hidden="true"></a>                {</span>
+<span id="cb9-29"><a href="#cb9-29" aria-hidden="true"></a>                    printf(<span class="st">&quot;.&quot;</span>);</span>
+<span id="cb9-30"><a href="#cb9-30" aria-hidden="true"></a>                }</span>
+<span id="cb9-31"><a href="#cb9-31" aria-hidden="true"></a>            }</span>
+<span id="cb9-32"><a href="#cb9-32" aria-hidden="true"></a>            <span class="cf">else</span></span>
+<span id="cb9-33"><a href="#cb9-33" aria-hidden="true"></a>            {</span>
+<span id="cb9-34"><a href="#cb9-34" aria-hidden="true"></a>                printf(<span class="st">&quot; &quot;</span>);</span>
+<span id="cb9-35"><a href="#cb9-35" aria-hidden="true"></a>            }</span>
+<span id="cb9-36"><a href="#cb9-36" aria-hidden="true"></a>        }</span>
+<span id="cb9-37"><a href="#cb9-37" aria-hidden="true"></a>        printf(<span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>);</span>
+<span id="cb9-38"><a href="#cb9-38" aria-hidden="true"></a>    }</span>
+<span id="cb9-39"><a href="#cb9-39" aria-hidden="true"></a>    printf(<span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>);</span>
+<span id="cb9-40"><a href="#cb9-40" aria-hidden="true"></a>}</span></code></pre></div>
+<p>On my machine, consuming the evaluation data and printing it produces the following result (the first sample from the test data is shown):</p>
+<pre><code>This is a 7:
+                            
+       *..                  
+      *#####********.       
+          .*#*####*##.      
+                   ##       
+                   #*       
+                  ##        
+                 .##        
+                 ##         
+                .#*         
+                *#          
+                #*          
+               ##           
+              *#.           
+             *#*            
+             ##             
+            *#              
+           .##              
+           ###              
+           ##*              
+           #*</code></pre>
+<p>so we can be somewhat confident that our MNIST data ingestor is working properly. The only remaining routine we need to implement is <code>MNIST::forward</code> which should consume the next sample, and forward the data to all subsequent nodes in the graph.</p>
+<pre><code>void MNIST::forward(num_t* data)
+{
+    read_next();
+    for (Node* node : subsequents_)
+    {
+        node-&gt;forward(data_);
+    }
+}</code></pre>
+<p>Such an interface ensures our <code>MNIST</code> node will be interoperable with networks that aren’t purely sequential.</p>
+<h3 id="the-feedforward-node">The Feedforward Node</h3>
+<p>The hidden and output nodes have much in common and so will be implemented in terms of a single feedforward node class. The feedforward node will need a configurable activation function and dimensionality. Here’s the interface for the <code>FFNode</code>:</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true"></a><span class="kw">enum</span> <span class="kw">class</span> Activation</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true"></a>{</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true"></a>    ReLU,</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true"></a>    Softmax</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true"></a>};</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true"></a></span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true"></a><span class="kw">class</span> FFNode : <span class="kw">public</span> Node</span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true"></a>{</span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true"></a><span class="kw">public</span>:</span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true"></a>    <span class="co">// A feedforward node is defined by the activation</span></span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true"></a>    <span class="co">// function and input/output dimensionality</span></span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true"></a>    FFNode(Model&amp; model,</span>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true"></a>           <span class="bu">std::</span>string name,</span>
+<span id="cb12-14"><a href="#cb12-14" aria-hidden="true"></a>           Activation activation,</span>
+<span id="cb12-15"><a href="#cb12-15" aria-hidden="true"></a>           <span class="dt">uint16_t</span> output_size,</span>
+<span id="cb12-16"><a href="#cb12-16" aria-hidden="true"></a>           <span class="dt">uint16_t</span> input_size);</span>
+<span id="cb12-17"><a href="#cb12-17" aria-hidden="true"></a></span>
+<span id="cb12-18"><a href="#cb12-18" aria-hidden="true"></a>    <span class="dt">void</span> init(<span class="dt">rne_t</span>&amp; rne) <span class="kw">override</span>;</span>
+<span id="cb12-19"><a href="#cb12-19" aria-hidden="true"></a></span>
+<span id="cb12-20"><a href="#cb12-20" aria-hidden="true"></a>    <span class="co">// The input data should have size input_size_</span></span>
+<span id="cb12-21"><a href="#cb12-21" aria-hidden="true"></a>    <span class="dt">void</span> forward(<span class="dt">num_t</span>* inputs) <span class="kw">override</span>;</span>
+<span id="cb12-22"><a href="#cb12-22" aria-hidden="true"></a></span>
+<span id="cb12-23"><a href="#cb12-23" aria-hidden="true"></a>    <span class="co">// The gradient data should have size output_size_</span></span>
+<span id="cb12-24"><a href="#cb12-24" aria-hidden="true"></a>    <span class="dt">void</span> reverse(<span class="dt">num_t</span>* gradients) <span class="kw">override</span>;</span>
+<span id="cb12-25"><a href="#cb12-25" aria-hidden="true"></a></span>
+<span id="cb12-26"><a href="#cb12-26" aria-hidden="true"></a>    <span class="dt">size_t</span> param_count() <span class="at">const</span> <span class="kw">noexcept</span> <span class="kw">override</span></span>
+<span id="cb12-27"><a href="#cb12-27" aria-hidden="true"></a>    {</span>
+<span id="cb12-28"><a href="#cb12-28" aria-hidden="true"></a>        <span class="co">// Weight matrix entries + bias entries</span></span>
+<span id="cb12-29"><a href="#cb12-29" aria-hidden="true"></a>        <span class="cf">return</span> (<span class="va">input_size_</span> + <span class="dv">1</span>) * <span class="va">output_size_</span>;</span>
+<span id="cb12-30"><a href="#cb12-30" aria-hidden="true"></a>    }</span>
+<span id="cb12-31"><a href="#cb12-31" aria-hidden="true"></a></span>
+<span id="cb12-32"><a href="#cb12-32" aria-hidden="true"></a>    <span class="dt">num_t</span>* param(<span class="dt">size_t</span> index);</span>
+<span id="cb12-33"><a href="#cb12-33" aria-hidden="true"></a>    <span class="dt">num_t</span>* gradient(<span class="dt">size_t</span> index);</span>
+<span id="cb12-34"><a href="#cb12-34" aria-hidden="true"></a></span>
+<span id="cb12-35"><a href="#cb12-35" aria-hidden="true"></a>    <span class="dt">void</span> print() <span class="at">const</span> <span class="kw">override</span>;</span>
+<span id="cb12-36"><a href="#cb12-36" aria-hidden="true"></a></span>
+<span id="cb12-37"><a href="#cb12-37" aria-hidden="true"></a><span class="kw">private</span>:</span>
+<span id="cb12-38"><a href="#cb12-38" aria-hidden="true"></a>    Activation <span class="va">activation_</span>;</span>
+<span id="cb12-39"><a href="#cb12-39" aria-hidden="true"></a>    <span class="dt">uint16_t</span> <span class="va">output_size_</span>;</span>
+<span id="cb12-40"><a href="#cb12-40" aria-hidden="true"></a>    <span class="dt">uint16_t</span> <span class="va">input_size_</span>;</span>
+<span id="cb12-41"><a href="#cb12-41" aria-hidden="true"></a></span>
+<span id="cb12-42"><a href="#cb12-42" aria-hidden="true"></a>    <span class="co">/////////////////////</span></span>
+<span id="cb12-43"><a href="#cb12-43" aria-hidden="true"></a>    <span class="co">// Node Parameters //</span></span>
+<span id="cb12-44"><a href="#cb12-44" aria-hidden="true"></a>    <span class="co">/////////////////////</span></span>
+<span id="cb12-45"><a href="#cb12-45" aria-hidden="true"></a></span>
+<span id="cb12-46"><a href="#cb12-46" aria-hidden="true"></a>    <span class="co">// weights_.size() := output_size_ * input_size_</span></span>
+<span id="cb12-47"><a href="#cb12-47" aria-hidden="true"></a>    <span class="bu">std::</span>vector&lt;<span class="dt">num_t</span>&gt; <span class="va">weights_</span>;</span>
+<span id="cb12-48"><a href="#cb12-48" aria-hidden="true"></a>    <span class="co">// biases_.size() := output_size_</span></span>
+<span id="cb12-49"><a href="#cb12-49" aria-hidden="true"></a>    <span class="bu">std::</span>vector&lt;<span class="dt">num_t</span>&gt; <span class="va">biases_</span>;</span>
+<span id="cb12-50"><a href="#cb12-50" aria-hidden="true"></a>    <span class="co">// activations_.size() := output_size_</span></span>
+<span id="cb12-51"><a href="#cb12-51" aria-hidden="true"></a>    <span class="bu">std::</span>vector&lt;<span class="dt">num_t</span>&gt; <span class="va">activations_</span>;</span>
+<span id="cb12-52"><a href="#cb12-52" aria-hidden="true"></a></span>
+<span id="cb12-53"><a href="#cb12-53" aria-hidden="true"></a>    <span class="co">////////////////////</span></span>
+<span id="cb12-54"><a href="#cb12-54" aria-hidden="true"></a>    <span class="co">// Loss Gradients //</span></span>
+<span id="cb12-55"><a href="#cb12-55" aria-hidden="true"></a>    <span class="co">////////////////////</span></span>
+<span id="cb12-56"><a href="#cb12-56" aria-hidden="true"></a></span>
+<span id="cb12-57"><a href="#cb12-57" aria-hidden="true"></a>    <span class="bu">std::</span>vector&lt;<span class="dt">num_t</span>&gt; <span class="va">activation_gradients_</span>;</span>
+<span id="cb12-58"><a href="#cb12-58" aria-hidden="true"></a></span>
+<span id="cb12-59"><a href="#cb12-59" aria-hidden="true"></a>    <span class="co">// During the training cycle, parameter loss gradients are accumulated in</span></span>
+<span id="cb12-60"><a href="#cb12-60" aria-hidden="true"></a>    <span class="co">// the following buffers.</span></span>
+<span id="cb12-61"><a href="#cb12-61" aria-hidden="true"></a>    <span class="bu">std::</span>vector&lt;<span class="dt">num_t</span>&gt; <span class="va">weight_gradients_</span>;</span>
+<span id="cb12-62"><a href="#cb12-62" aria-hidden="true"></a>    <span class="bu">std::</span>vector&lt;<span class="dt">num_t</span>&gt; <span class="va">bias_gradients_</span>;</span>
+<span id="cb12-63"><a href="#cb12-63" aria-hidden="true"></a></span>
+<span id="cb12-64"><a href="#cb12-64" aria-hidden="true"></a>    <span class="co">// This buffer is used to store temporary gradients used in a SINGLE</span></span>
+<span id="cb12-65"><a href="#cb12-65" aria-hidden="true"></a>    <span class="co">// backpropagation pass. Note that this does not accumulate like the weight</span></span>
+<span id="cb12-66"><a href="#cb12-66" aria-hidden="true"></a>    <span class="co">// and bias gradients do.</span></span>
+<span id="cb12-67"><a href="#cb12-67" aria-hidden="true"></a>    <span class="bu">std::</span>vector&lt;<span class="dt">num_t</span>&gt; <span class="va">input_gradients_</span>;</span>
+<span id="cb12-68"><a href="#cb12-68" aria-hidden="true"></a></span>
+<span id="cb12-69"><a href="#cb12-69" aria-hidden="true"></a>    <span class="co">// The last input is needed to compute loss gradients with respect to the</span></span>
+<span id="cb12-70"><a href="#cb12-70" aria-hidden="true"></a>    <span class="co">// weights during backpropagation</span></span>
+<span id="cb12-71"><a href="#cb12-71" aria-hidden="true"></a>    <span class="dt">num_t</span>* <span class="va">last_input_</span>;</span>
+<span id="cb12-72"><a href="#cb12-72" aria-hidden="true"></a>};</span></code></pre></div>
+<p>Compared to the <code>MNIST</code> node, the <code>FFNode</code> uses a lot more state to track all tunable parameters (weight matrix elements and biases), as well as the loss gradients corresponding to each parameter. The loss gradients must be kept because, remember, utilizing them to actually adjust the parameters is performed only after <code>N</code> samples have been evaluated, where <code>N</code> is the chosen batch size in our stochastic gradient descent algorithm. If the purpose of some of the class members here is still opaque, they will show up later when implement backpropagation.</p>
+<p>First, we must decide how to initialize the weights and biases of our node. When deciding on a scheme, there are a few key principles to keep in mind. First, the initialization must exhibit symmetry of any sort. For example, if all the parameters are initialized to the same random value, the loss gradients with respect to all individual parameters will be identical, and our network will be no better than a network with a single parameter. In addition, we do not want the parameters to be initialized such that they are too large, or too small. Most papers that discuss weight initialization strive to ensure that the loss gradients remain in a realm where floating point number retain precision (in the range <span class="math inline">[1, 2)</span>). The other criteria is that parameters should generally be initialized such that they are roughly similar in magnitude. Parameters that deviate too far from the mean are likely to either dominate loss gradients, or produce too small a signal to contribute. Proper parameter initialization is but a small part of addressing the larger problem common in neural networks known as the problem of <em>exploding and vanishing gradients</em>. Here, we present the implementation with a couple references if you wish to dig deeper.</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true"></a><span class="dt">void</span> FFNode::init(<span class="dt">rne_t</span>&amp; rne)</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true"></a>{</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true"></a>    <span class="dt">num_t</span> sigma;</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true"></a>    <span class="cf">switch</span> (<span class="va">activation_</span>)</span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true"></a>    {</span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true"></a>    <span class="cf">case</span> Activation::ReLU:</span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true"></a>        <span class="co">// Kaiming He, et. al. weight initialization for ReLU networks</span></span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true"></a>        <span class="co">// https://arxiv.org/pdf/1502.01852.pdf</span></span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true"></a>        <span class="co">//</span></span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true"></a>        <span class="co">// Suggests using a normal distribution with variance := 2 / n_in</span></span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true"></a>        sigma = <span class="bu">std::</span>sqrt(<span class="fl">2.0</span> / <span class="kw">static_cast</span>&lt;<span class="dt">num_t</span>&gt;(<span class="va">input_size_</span>));</span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true"></a>        <span class="cf">break</span>;</span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true"></a>    <span class="cf">case</span> Activation::Softmax:</span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true"></a>    <span class="cf">default</span>:</span>
+<span id="cb13-15"><a href="#cb13-15" aria-hidden="true"></a>        <span class="co">// LeCun initialization as suggested in &quot;Self-Normalizing Neural</span></span>
+<span id="cb13-16"><a href="#cb13-16" aria-hidden="true"></a>        <span class="co">// Networks&quot;</span></span>
+<span id="cb13-17"><a href="#cb13-17" aria-hidden="true"></a>        <span class="co">// https://arxiv.org/pdf/1706.02515.pdf</span></span>
+<span id="cb13-18"><a href="#cb13-18" aria-hidden="true"></a>        sigma = <span class="bu">std::</span>sqrt(<span class="fl">1.0</span> / <span class="kw">static_cast</span>&lt;<span class="dt">num_t</span>&gt;(<span class="va">input_size_</span>));</span>
+<span id="cb13-19"><a href="#cb13-19" aria-hidden="true"></a>        <span class="cf">break</span>;</span>
+<span id="cb13-20"><a href="#cb13-20" aria-hidden="true"></a>    }</span>
+<span id="cb13-21"><a href="#cb13-21" aria-hidden="true"></a></span>
+<span id="cb13-22"><a href="#cb13-22" aria-hidden="true"></a>    <span class="co">// </span><span class="al">NOTE</span><span class="co">: Unfortunately, the C++ standard does not guarantee that the results</span></span>
+<span id="cb13-23"><a href="#cb13-23" aria-hidden="true"></a>    <span class="co">// obtained from a distribution function will be identical given the same</span></span>
+<span id="cb13-24"><a href="#cb13-24" aria-hidden="true"></a>    <span class="co">// inputs across different compilers and platforms. A production ML</span></span>
+<span id="cb13-25"><a href="#cb13-25" aria-hidden="true"></a>    <span class="co">// framework will likely implement its own distributions to provide</span></span>
+<span id="cb13-26"><a href="#cb13-26" aria-hidden="true"></a>    <span class="co">// deterministic results.</span></span>
+<span id="cb13-27"><a href="#cb13-27" aria-hidden="true"></a>    <span class="kw">auto</span> dist = <span class="bu">std::</span>normal_distribution&lt;<span class="dt">num_t</span>&gt;{<span class="fl">0.0</span>, sigma};</span>
+<span id="cb13-28"><a href="#cb13-28" aria-hidden="true"></a></span>
+<span id="cb13-29"><a href="#cb13-29" aria-hidden="true"></a>    <span class="cf">for</span> (<span class="dt">num_t</span>&amp; w : <span class="va">weights_</span>)</span>
+<span id="cb13-30"><a href="#cb13-30" aria-hidden="true"></a>    {</span>
+<span id="cb13-31"><a href="#cb13-31" aria-hidden="true"></a>        w = dist(rne);</span>
+<span id="cb13-32"><a href="#cb13-32" aria-hidden="true"></a>    }</span>
+<span id="cb13-33"><a href="#cb13-33" aria-hidden="true"></a></span>
+<span id="cb13-34"><a href="#cb13-34" aria-hidden="true"></a>    <span class="co">// </span><span class="al">NOTE</span><span class="co">: Setting biases to zero is a common practice, as is initializing the</span></span>
+<span id="cb13-35"><a href="#cb13-35" aria-hidden="true"></a>    <span class="co">// bias to a small value (e.g. on the order of 0.01). It is unclear if the</span></span>
+<span id="cb13-36"><a href="#cb13-36" aria-hidden="true"></a>    <span class="co">// latter produces a consistent result over the former, but the thinking is</span></span>
+<span id="cb13-37"><a href="#cb13-37" aria-hidden="true"></a>    <span class="co">// that a non-zero bias will ensure that the neuron always &quot;fires&quot; at the</span></span>
+<span id="cb13-38"><a href="#cb13-38" aria-hidden="true"></a>    <span class="co">// beginning to produce a signal.</span></span>
+<span id="cb13-39"><a href="#cb13-39" aria-hidden="true"></a>    <span class="co">//</span></span>
+<span id="cb13-40"><a href="#cb13-40" aria-hidden="true"></a>    <span class="co">// Here, we initialize all biases to a small number, but the reader should</span></span>
+<span id="cb13-41"><a href="#cb13-41" aria-hidden="true"></a>    <span class="co">// consider experimenting with other approaches.</span></span>
+<span id="cb13-42"><a href="#cb13-42" aria-hidden="true"></a>    <span class="cf">for</span> (<span class="dt">num_t</span>&amp; b : <span class="va">biases_</span>)</span>
+<span id="cb13-43"><a href="#cb13-43" aria-hidden="true"></a>    {</span>
+<span id="cb13-44"><a href="#cb13-44" aria-hidden="true"></a>        b = <span class="fl">0.01</span>;</span>
+<span id="cb13-45"><a href="#cb13-45" aria-hidden="true"></a>    }</span>
+<span id="cb13-46"><a href="#cb13-46" aria-hidden="true"></a>}</span></code></pre></div>
+<p>The common theme is that the distribution of random weights scales roughly as the inverse square root of the input vector size. This way, the distribution of the node’s output will fall in a “nice” range with respect to floating-point precision. Other initialization schemes are of course possible, and in some cases critical depending on the choice of activation function.</p>
+<p>With weights and biases initialized, it’s time to implement <code>FFNode::forward</code>. The straightforward plan is, for both the ReLU and softmax nodes, first perform the affine transform <span class="math inline">\mathbf{W}\mathbf{x} + \mathbf{b}</span>, then perform the activation function which will be one of the linear rectifier or the softmax function. Here’s what this looks like:</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true"></a><span class="dt">void</span> FFNode::forward(<span class="dt">num_t</span>* inputs)</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true"></a>{</span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true"></a>    <span class="co">// Remember the last input data for backpropagation later</span></span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true"></a>    <span class="va">last_input_</span> = inputs;</span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true"></a></span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true"></a>    <span class="cf">for</span> (<span class="dt">size_t</span> i = <span class="dv">0</span>; i != <span class="va">output_size_</span>; ++i)</span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true"></a>    {</span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true"></a>        <span class="co">// For each output vector, compute the dot product of the input data</span></span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true"></a>        <span class="co">// with the weight vector add the bias</span></span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true"></a></span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true"></a>        <span class="dt">num_t</span> z{<span class="fl">0.0</span>};</span>
+<span id="cb14-12"><a href="#cb14-12" aria-hidden="true"></a></span>
+<span id="cb14-13"><a href="#cb14-13" aria-hidden="true"></a>        <span class="dt">size_t</span> offset = i * <span class="va">input_size_</span>;</span>
+<span id="cb14-14"><a href="#cb14-14" aria-hidden="true"></a></span>
+<span id="cb14-15"><a href="#cb14-15" aria-hidden="true"></a>        <span class="cf">for</span> (<span class="dt">size_t</span> j = <span class="dv">0</span>; j != <span class="va">input_size_</span>; ++j)</span>
+<span id="cb14-16"><a href="#cb14-16" aria-hidden="true"></a>        {</span>
+<span id="cb14-17"><a href="#cb14-17" aria-hidden="true"></a>            z += <span class="va">weights_</span>[offset + j] * inputs[j];</span>
+<span id="cb14-18"><a href="#cb14-18" aria-hidden="true"></a>        }</span>
+<span id="cb14-19"><a href="#cb14-19" aria-hidden="true"></a>        <span class="co">// Add neuron bias</span></span>
+<span id="cb14-20"><a href="#cb14-20" aria-hidden="true"></a>        z += <span class="va">biases_</span>[i];</span>
+<span id="cb14-21"><a href="#cb14-21" aria-hidden="true"></a></span>
+<span id="cb14-22"><a href="#cb14-22" aria-hidden="true"></a>        <span class="cf">switch</span> (<span class="va">activation_</span>)</span>
+<span id="cb14-23"><a href="#cb14-23" aria-hidden="true"></a>        {</span>
+<span id="cb14-24"><a href="#cb14-24" aria-hidden="true"></a>        <span class="cf">case</span> Activation::ReLU:</span>
+<span id="cb14-25"><a href="#cb14-25" aria-hidden="true"></a>            <span class="va">activations_</span>[i] = <span class="bu">std::</span>max(z, <span class="dt">num_t</span>{<span class="fl">0.0</span>});</span>
+<span id="cb14-26"><a href="#cb14-26" aria-hidden="true"></a>            <span class="cf">break</span>;</span>
+<span id="cb14-27"><a href="#cb14-27" aria-hidden="true"></a>        <span class="cf">case</span> Activation::Softmax:</span>
+<span id="cb14-28"><a href="#cb14-28" aria-hidden="true"></a>        <span class="cf">default</span>:</span>
+<span id="cb14-29"><a href="#cb14-29" aria-hidden="true"></a>            <span class="va">activations_</span>[i] = <span class="bu">std::</span>exp(z);</span>
+<span id="cb14-30"><a href="#cb14-30" aria-hidden="true"></a>            <span class="cf">break</span>;</span>
+<span id="cb14-31"><a href="#cb14-31" aria-hidden="true"></a>        }</span>
+<span id="cb14-32"><a href="#cb14-32" aria-hidden="true"></a>    }</span>
+<span id="cb14-33"><a href="#cb14-33" aria-hidden="true"></a></span>
+<span id="cb14-34"><a href="#cb14-34" aria-hidden="true"></a>    <span class="cf">if</span> (<span class="va">activation_</span> == Activation::Softmax)</span>
+<span id="cb14-35"><a href="#cb14-35" aria-hidden="true"></a>    {</span>
+<span id="cb14-36"><a href="#cb14-36" aria-hidden="true"></a>        <span class="co">// softmax(z)_i = exp(z_i) / \sum_j(exp(z_j))</span></span>
+<span id="cb14-37"><a href="#cb14-37" aria-hidden="true"></a>        <span class="dt">num_t</span> sum_exp_z{<span class="fl">0.0</span>};</span>
+<span id="cb14-38"><a href="#cb14-38" aria-hidden="true"></a>        <span class="cf">for</span> (<span class="dt">size_t</span> i = <span class="dv">0</span>; i != <span class="va">output_size_</span>; ++i)</span>
+<span id="cb14-39"><a href="#cb14-39" aria-hidden="true"></a>        {</span>
+<span id="cb14-40"><a href="#cb14-40" aria-hidden="true"></a>            <span class="co">// </span><span class="al">NOTE</span><span class="co">: with exploding gradients, it is quite easy for this</span></span>
+<span id="cb14-41"><a href="#cb14-41" aria-hidden="true"></a>            <span class="co">// exponential function to overflow, which will result in NaNs</span></span>
+<span id="cb14-42"><a href="#cb14-42" aria-hidden="true"></a>            <span class="co">// infecting the network.</span></span>
+<span id="cb14-43"><a href="#cb14-43" aria-hidden="true"></a>            sum_exp_z += <span class="va">activations_</span>[i];</span>
+<span id="cb14-44"><a href="#cb14-44" aria-hidden="true"></a>        }</span>
+<span id="cb14-45"><a href="#cb14-45" aria-hidden="true"></a>        <span class="dt">num_t</span> inv_sum_exp_z = <span class="dt">num_t</span>{<span class="fl">1.0</span>} / sum_exp_z;</span>
+<span id="cb14-46"><a href="#cb14-46" aria-hidden="true"></a>        <span class="cf">for</span> (<span class="dt">size_t</span> i = <span class="dv">0</span>; i != <span class="va">output_size_</span>; ++i)</span>
+<span id="cb14-47"><a href="#cb14-47" aria-hidden="true"></a>        {</span>
+<span id="cb14-48"><a href="#cb14-48" aria-hidden="true"></a>            <span class="va">activations_</span>[i] *= inv_sum_exp_z;</span>
+<span id="cb14-49"><a href="#cb14-49" aria-hidden="true"></a>        }</span>
+<span id="cb14-50"><a href="#cb14-50" aria-hidden="true"></a>    }</span>
+<span id="cb14-51"><a href="#cb14-51" aria-hidden="true"></a></span>
+<span id="cb14-52"><a href="#cb14-52" aria-hidden="true"></a>    <span class="co">// Forward activation data to all subsequent nodes in the computational</span></span>
+<span id="cb14-53"><a href="#cb14-53" aria-hidden="true"></a>    <span class="co">// graph</span></span>
+<span id="cb14-54"><a href="#cb14-54" aria-hidden="true"></a>    <span class="cf">for</span> (Node* subsequent : <span class="va">subsequents_</span>)</span>
+<span id="cb14-55"><a href="#cb14-55" aria-hidden="true"></a>    {</span>
+<span id="cb14-56"><a href="#cb14-56" aria-hidden="true"></a>        subsequent-&gt;forward(<span class="va">activations_</span>.data());</span>
+<span id="cb14-57"><a href="#cb14-57" aria-hidden="true"></a>    }</span>
+<span id="cb14-58"><a href="#cb14-58" aria-hidden="true"></a>}</span></code></pre></div>
+<p>As before, we forward all final results to all subsequent nodes even though there will only be a single subsequent node in this case. Whenever writing code as above, it is prudent to consider all potential corner cases which could result in the myriad issues that arise in floating-point computation:</p>
+<ul>
+<li>Loss of precision</li>
+<li>Floating point overflow and underflow</li>
+<li>Divide by zero</li>
+</ul>
+<p>Loss of precision easily occurs when in a number of situations, such as subtracting two quantities of similar size, or adding and multiplying quantities with greatly different magnitudes. Floating point overflow and underflow occur typically when repeatedly performing an operation such that an accumulator explodes to <span class="math inline">\infty</span> or <span class="math inline">-\infty</span>. In this case, the use of <code>std::exp</code> is one operation that sticks out. We will not implement a stable softmax here, but the following identity can be used to improve its stability should you need it:</p>
+<p><span class="math display">\mathrm{softmax}(\mathbf{z} + \mathbf{C})_i = \mathrm{softmax}(\mathbf{z})_i, \forall i</span></p>
+<p>Thus, if we are considered about saturating <code>std::exp</code> with a large argument, we can simply set <span class="math inline">C</span> to be the additive inverse of the <span class="math inline">z_i</span> with the greatest magnitude within <span class="math inline">\mathbf{z}</span>. Performing this each time we apply softmax will usually maintain the arguments of the softmax within a reasonable range (unless elements of <span class="math inline">z_i</span> explode in opposite directions).</p>
+<p>As a practical implementor’s trick, it is possible to enable floating point exception traps to throw an exception when a <code>NaN</code> is generated in a floating point register. Using libc for example, we can trap floating point exceptions using</p>
+<div class="sourceCode" id="cb15"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true"></a><span class="pp">#include </span><span class="im">&lt;cfenv&gt;</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true"></a></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true"></a>feenableexcept(FE_INVALID | FE_OVERFLOW);</span></code></pre></div>
+<p>It is also possible to trap exceptions specifically in regions where you anticipate a potential issue (which enhances the overall throughput of the network). In the interest of brevity, please consult your compiler’s documentation for how to do this.</p>
+<p>One observation you might have made is the first line of our routine.</p>
+<div class="sourceCode" id="cb16"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true"></a><span class="va">last_input_</span> = inputs;</span></code></pre></div>
+<p>Here, we retain a pointer to the data ingested by the feedforward node for a full training cycle. Before delving into any derivations, let’s first present the code for the backpropagation of gradients through our feedforward node and dissect it immediately afterwards.</p>
+<div class="sourceCode" id="cb17"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true"></a><span class="dt">void</span> FFNode::reverse(<span class="dt">num_t</span>* gradients)</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true"></a>{</span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true"></a>    <span class="co">// First, we compute dL/dz as dL/dA(z) * dA(z)/dz and store it in our</span></span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true"></a>    <span class="co">// activations array</span></span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true"></a>    <span class="cf">for</span> (<span class="dt">size_t</span> i = <span class="dv">0</span>; i != <span class="va">output_size_</span>; ++i)</span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true"></a>    {</span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true"></a>        <span class="co">// dA(z)/dz</span></span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true"></a>        <span class="dt">num_t</span> activation_grad{<span class="fl">0.0</span>};</span>
+<span id="cb17-9"><a href="#cb17-9" aria-hidden="true"></a>        <span class="cf">switch</span> (<span class="va">activation_</span>)</span>
+<span id="cb17-10"><a href="#cb17-10" aria-hidden="true"></a>        {</span>
+<span id="cb17-11"><a href="#cb17-11" aria-hidden="true"></a>        <span class="cf">case</span> Activation::ReLU:</span>
+<span id="cb17-12"><a href="#cb17-12" aria-hidden="true"></a>            <span class="cf">if</span> (<span class="va">activations_</span>[i] &gt; <span class="dt">num_t</span>{<span class="fl">0.0</span>})</span>
+<span id="cb17-13"><a href="#cb17-13" aria-hidden="true"></a>            {</span>
+<span id="cb17-14"><a href="#cb17-14" aria-hidden="true"></a>                activation_grad = <span class="dt">num_t</span>{<span class="fl">1.0</span>};</span>
+<span id="cb17-15"><a href="#cb17-15" aria-hidden="true"></a>            }</span>
+<span id="cb17-16"><a href="#cb17-16" aria-hidden="true"></a>            <span class="cf">else</span></span>
+<span id="cb17-17"><a href="#cb17-17" aria-hidden="true"></a>            {</span>
+<span id="cb17-18"><a href="#cb17-18" aria-hidden="true"></a>                activation_grad = <span class="dt">num_t</span>{<span class="fl">0.0</span>};</span>
+<span id="cb17-19"><a href="#cb17-19" aria-hidden="true"></a>            }</span>
+<span id="cb17-20"><a href="#cb17-20" aria-hidden="true"></a>            <span class="co">// dL/dz = dL/dA(z) * dA(z)/dz</span></span>
+<span id="cb17-21"><a href="#cb17-21" aria-hidden="true"></a>            <span class="va">activation_gradients_</span>[i] = gradients[i] * activation_grad;</span>
+<span id="cb17-22"><a href="#cb17-22" aria-hidden="true"></a>            <span class="cf">break</span>;</span>
+<span id="cb17-23"><a href="#cb17-23" aria-hidden="true"></a>        <span class="cf">case</span> Activation::Softmax:</span>
+<span id="cb17-24"><a href="#cb17-24" aria-hidden="true"></a>        <span class="cf">default</span>:</span>
+<span id="cb17-25"><a href="#cb17-25" aria-hidden="true"></a>            <span class="cf">for</span> (<span class="dt">size_t</span> j = <span class="dv">0</span>; j != <span class="va">output_size_</span>; ++j)</span>
+<span id="cb17-26"><a href="#cb17-26" aria-hidden="true"></a>            {</span>
+<span id="cb17-27"><a href="#cb17-27" aria-hidden="true"></a>                <span class="cf">if</span> (i == j)</span>
+<span id="cb17-28"><a href="#cb17-28" aria-hidden="true"></a>                {</span>
+<span id="cb17-29"><a href="#cb17-29" aria-hidden="true"></a>                    activation_grad += <span class="va">activations_</span>[i]</span>
+<span id="cb17-30"><a href="#cb17-30" aria-hidden="true"></a>                                       * (<span class="dt">num_t</span>{<span class="fl">1.0</span>} - <span class="va">activations_</span>[i])</span>
+<span id="cb17-31"><a href="#cb17-31" aria-hidden="true"></a>                                       * gradients[j];</span>
+<span id="cb17-32"><a href="#cb17-32" aria-hidden="true"></a>                }</span>
+<span id="cb17-33"><a href="#cb17-33" aria-hidden="true"></a>                <span class="cf">else</span></span>
+<span id="cb17-34"><a href="#cb17-34" aria-hidden="true"></a>                {</span>
+<span id="cb17-35"><a href="#cb17-35" aria-hidden="true"></a>                    activation_grad</span>
+<span id="cb17-36"><a href="#cb17-36" aria-hidden="true"></a>                        += -<span class="va">activations_</span>[i] * <span class="va">activations_</span>[j] * gradients[j];</span>
+<span id="cb17-37"><a href="#cb17-37" aria-hidden="true"></a>                }</span>
+<span id="cb17-38"><a href="#cb17-38" aria-hidden="true"></a>            }</span>
+<span id="cb17-39"><a href="#cb17-39" aria-hidden="true"></a></span>
+<span id="cb17-40"><a href="#cb17-40" aria-hidden="true"></a>            <span class="va">activation_gradients_</span>[i] = activation_grad;</span>
+<span id="cb17-41"><a href="#cb17-41" aria-hidden="true"></a>            <span class="cf">break</span>;</span>
+<span id="cb17-42"><a href="#cb17-42" aria-hidden="true"></a>        }</span>
+<span id="cb17-43"><a href="#cb17-43" aria-hidden="true"></a>    }</span>
+<span id="cb17-44"><a href="#cb17-44" aria-hidden="true"></a></span>
+<span id="cb17-45"><a href="#cb17-45" aria-hidden="true"></a>    <span class="cf">for</span> (<span class="dt">size_t</span> i = <span class="dv">0</span>; i != <span class="va">output_size_</span>; ++i)</span>
+<span id="cb17-46"><a href="#cb17-46" aria-hidden="true"></a>    {</span>
+<span id="cb17-47"><a href="#cb17-47" aria-hidden="true"></a>        <span class="co">// dL/db_i = dL/dA(z_i) * dA(z_i)/dz_i.</span></span>
+<span id="cb17-48"><a href="#cb17-48" aria-hidden="true"></a>        <span class="va">bias_gradients_</span>[i] += <span class="va">activation_gradients_</span>[i];</span>
+<span id="cb17-49"><a href="#cb17-49" aria-hidden="true"></a>    }</span>
+<span id="cb17-50"><a href="#cb17-50" aria-hidden="true"></a></span>
+<span id="cb17-51"><a href="#cb17-51" aria-hidden="true"></a>    <span class="bu">std::</span>fill(<span class="va">input_gradients_</span>.begin(), <span class="va">input_gradients_</span>.end(), <span class="dv">0</span>);</span>
+<span id="cb17-52"><a href="#cb17-52" aria-hidden="true"></a></span>
+<span id="cb17-53"><a href="#cb17-53" aria-hidden="true"></a>    <span class="cf">for</span> (<span class="dt">size_t</span> i = <span class="dv">0</span>; i != <span class="va">output_size_</span>; ++i)</span>
+<span id="cb17-54"><a href="#cb17-54" aria-hidden="true"></a>    {</span>
+<span id="cb17-55"><a href="#cb17-55" aria-hidden="true"></a>        <span class="dt">size_t</span> offset = i * <span class="va">input_size_</span>;</span>
+<span id="cb17-56"><a href="#cb17-56" aria-hidden="true"></a>        <span class="cf">for</span> (<span class="dt">size_t</span> j = <span class="dv">0</span>; j != <span class="va">input_size_</span>; ++j)</span>
+<span id="cb17-57"><a href="#cb17-57" aria-hidden="true"></a>        {</span>
+<span id="cb17-58"><a href="#cb17-58" aria-hidden="true"></a>            <span class="va">input_gradients_</span>[j]</span>
+<span id="cb17-59"><a href="#cb17-59" aria-hidden="true"></a>                += <span class="va">weights_</span>[offset + j] * <span class="va">activation_gradients_</span>[i];</span>
+<span id="cb17-60"><a href="#cb17-60" aria-hidden="true"></a>        }</span>
+<span id="cb17-61"><a href="#cb17-61" aria-hidden="true"></a>    }</span>
+<span id="cb17-62"><a href="#cb17-62" aria-hidden="true"></a></span>
+<span id="cb17-63"><a href="#cb17-63" aria-hidden="true"></a>    <span class="cf">for</span> (<span class="dt">size_t</span> i = <span class="dv">0</span>; i != <span class="va">input_size_</span>; ++i)</span>
+<span id="cb17-64"><a href="#cb17-64" aria-hidden="true"></a>    {</span>
+<span id="cb17-65"><a href="#cb17-65" aria-hidden="true"></a>        <span class="cf">for</span> (<span class="dt">size_t</span> j = <span class="dv">0</span>; j != <span class="va">output_size_</span>; ++j)</span>
+<span id="cb17-66"><a href="#cb17-66" aria-hidden="true"></a>        {</span>
+<span id="cb17-67"><a href="#cb17-67" aria-hidden="true"></a>            <span class="va">weight_gradients_</span>[j * <span class="va">input_size_</span> + i]</span>
+<span id="cb17-68"><a href="#cb17-68" aria-hidden="true"></a>                += <span class="va">last_input_</span>[i] * <span class="va">activation_gradients_</span>[j];</span>
+<span id="cb17-69"><a href="#cb17-69" aria-hidden="true"></a>        }</span>
+<span id="cb17-70"><a href="#cb17-70" aria-hidden="true"></a>    }</span>
+<span id="cb17-71"><a href="#cb17-71" aria-hidden="true"></a></span>
+<span id="cb17-72"><a href="#cb17-72" aria-hidden="true"></a>    <span class="cf">for</span> (Node* node : <span class="va">antecedents_</span>)</span>
+<span id="cb17-73"><a href="#cb17-73" aria-hidden="true"></a>    {</span>
+<span id="cb17-74"><a href="#cb17-74" aria-hidden="true"></a>        node-&gt;reverse(<span class="va">input_gradients_</span>.data());</span>
+<span id="cb17-75"><a href="#cb17-75" aria-hidden="true"></a>    }</span>
+<span id="cb17-76"><a href="#cb17-76" aria-hidden="true"></a>}</span></code></pre></div>
+<p>This code is likely more difficult to digest, so let’s break it down into parts. During reverse accumulation (aka backpropagation), we will be given the loss gradients with respect to all of the outputs from the most recent forward pass, written mathematically as <span class="math inline">\partial L/\partial a_i</span> for each output scalar <span class="math inline">a_i</span>. Given that information, we need to perform the following tasks:</p>
+<ol type="1">
+<li>Compute <span class="math inline">\partial L/\partial w_{ij}</span> for each weight in our weight matrix</li>
+<li>Compute <span class="math inline">\partial L/\partial b_i</span> for each bias in our bias vector</li>
+<li>Compute <span class="math inline">\partial L/\partial x_i</span> for each input scalar in the most recent forward pass</li>
+<li>Propagate all the loss gradients with respect to the inputs in step 3 back to the antecedent nodes</li>
+</ol>
+<p>As all outputs pass through an activation function, we will need to compute <span class="math inline">\partial L/\partial f_i</span> where <span class="math inline">f_i</span> is one of the linear rectifier or softmax function corresponding to a particular component of the output vector. Both derivatives are computed in the background section, so we’ll just recite the results here. For the linear rectifier, <span class="math inline">\partial L/\partial f_i</span> will simply be 1 if <span class="math inline">a_i</span> was positive, and 0 otherwise. The softmax gradient is slightly more involved, but because every output of the softmax contributes additively to the loss, we require a sum of gradients here:</p>
+<p><span class="math display">\frac{\partial L}{\partial \mathrm{softmax}(\mathbf{z})_i} = \frac{\partial L}{\partial a_i}\sum_{j} \begin{cases}
+\mathrm{softmax}(\mathbf{z})_i\left(1 - \mathrm{softmax}(\mathbf{z})_i\right) &amp; i = j \\
+-\mathrm{softmax}(\mathbf{z})_i \mathrm{softmax}(\mathbf{z})_j &amp; i \neq j
+\end{cases}</span></p>
+<p>The factor <span class="math inline">\partial L/\partial a_i</span> comes from the chain rule and is passed in from the subsequent node. These intermediate expressions are computed and stored in <code>activation_gradients_</code> in the top portion of <code>FFNode::reverse</code>. Because the loss gradients all have a functional dependence on the activation function gradients, all results computed in tasks 1 through 4 above will depend on <code>activation_gradients_</code>.</p>
+<h4 id="computing-bias-gradients">Computing bias gradients</h4>
+<p>The bias gradients are the easiest to compute due to how they show up in the expression. Since a node’s output is given as</p>
+<p><span class="math display">a_i = f\left(\mathbf{W}_i \cdot \mathbf{x} + b_i = z_i\right)</span></p>
+<p>the derivative with respect to <span class="math inline">b_i</span> is just</p>
+<p><span class="math display">
+\begin{aligned}
+\frac{\partial{a_i}}{\partial b_i} &amp;= \frac{\partial f}{\partial z_i}\frac{\partial z_i}{\partial b_i} \\
+&amp;= \frac{\partial f}{\partial z_i}
+\end{aligned}
+</span></p>
+<p>Thus we can simply accumulate the result stored in <code>activation_gradients_</code> as the loss gradient with respect to each bias. Please take note! The code that performs this update is</p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true"></a>    <span class="cf">for</span> (<span class="dt">size_t</span> i = <span class="dv">0</span>; i != <span class="va">output_size_</span>; ++i)</span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true"></a>    {</span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true"></a>        <span class="va">bias_gradients_</span>[i] += <span class="va">activation_gradients_</span>[i];</span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true"></a>    }</span></code></pre></div>
+<p>The following code would <em>not</em> be correct:</p>
+<div class="sourceCode" id="cb19"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true"></a>    <span class="cf">for</span> (<span class="dt">size_t</span> i = <span class="dv">0</span>; i != <span class="va">output_size_</span>; ++i)</span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true"></a>    {</span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true"></a>        <span class="co">// </span><span class="al">NOTE</span><span class="co">: WRONG! Will only alone batch sizes of 1</span></span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true"></a>        <span class="va">bias_gradients_</span>[i] = <span class="va">activation_gradients_</span>[i];</span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true"></a>    }</span></code></pre></div>
+<p>As the admonition in the comment suggests, while it’s helpful to conceptualize the loss gradient as something that resets every time we perform a forward and reverse pass of a training sample, in actuality, we require the gradients with respect to the <em>cumulative mean loss accrued while evaluating the entire batch</em> for stochastic gradient descent. Luckily, because the losses per sample accumulate additively, the gradients of the loss with respect to all parameters in the model also update additively.</p>
+<h4 id="computing-the-weight-gradients">Computing the weight gradients</h4>
+<p>The weight gradients are slightly more involved than the bias gradients, but are still relatively easy to compute with a bit of bookkeeping. For any given weight <span class="math inline">w_{ij}</span>, we can observe that such a weight participates only in the evaluation of <span class="math inline">z_i</span>. That is:</p>
+<p><span class="math display">
+\begin{aligned}
+\frac{\partial \mathbf{z}}{\partial w_{ij}} &amp;= \frac{\partial z_i}{\partial w_{ij}} \\
+&amp;= \frac{\partial (\mathbf{w}_{i} \cdot \mathbf{x}) + b_i}{\partial w_{ij}} \\
+&amp;= x_j \\
+\end{aligned}
+</span></p>
+<p><span class="math display">
+\boxed{\frac{\partial L}{\partial w_{ij}} = \frac{\partial L}{\partial a_i}\frac{\partial a_i}{\partial z_i}x_j}
+</span></p>
+<p>The boxed result shows the final loss gradient with respect to a weight parameter. The weight gradient accumulation appears in the following code, where all <span class="math inline">N \times M</span> weights are updated in a couple of nested loops:</p>
+<div class="sourceCode" id="cb20"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true"></a>    <span class="cf">for</span> (<span class="dt">size_t</span> i = <span class="dv">0</span>; i != <span class="va">input_size_</span>; ++i)</span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true"></a>    {</span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true"></a>        <span class="cf">for</span> (<span class="dt">size_t</span> j = <span class="dv">0</span>; j != <span class="va">output_size_</span>; ++j)</span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true"></a>        {</span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true"></a>            <span class="va">weight_gradients_</span>[j * <span class="va">input_size_</span> + i]</span>
+<span id="cb20-6"><a href="#cb20-6" aria-hidden="true"></a>                += <span class="va">last_input_</span>[i] * <span class="va">activation_gradients_</span>[j];</span>
+<span id="cb20-7"><a href="#cb20-7" aria-hidden="true"></a>        }</span>
+<span id="cb20-8"><a href="#cb20-8" aria-hidden="true"></a>    }</span></code></pre></div>
+<h4 id="computing-the-input-gradients">Computing the input gradients</h4>
+<p>The last set of gradients we need to compute are the loss gradients with respect to the inputs, to be forwarded to the antecedent node. This calculation is similar to the calculation of the weight gradients in terms of the linear dependence. However, it is important to note that a given input participates in the computation of <em>all</em> output scalars. Thus, we expect each individual input gradient to be a summation.</p>
+<p><span class="math display">
+\frac{\partial L}{\partial x_i} = \sum_j \frac{\partial L}{\partial a_j}\frac{\partial a_j}{\partial z_j}w_{ij}
+</span></p>
+<p>The code that computes the input gradients is defined here:</p>
+<div class="sourceCode" id="cb21"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true"></a>    <span class="bu">std::</span>fill(<span class="va">input_gradients_</span>.begin(), <span class="va">input_gradients_</span>.end(), <span class="dv">0</span>);</span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true"></a></span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true"></a>    <span class="cf">for</span> (<span class="dt">size_t</span> i = <span class="dv">0</span>; i != <span class="va">output_size_</span>; ++i)</span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true"></a>    {</span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true"></a>        <span class="dt">size_t</span> offset = i * <span class="va">input_size_</span>;</span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true"></a>        <span class="cf">for</span> (<span class="dt">size_t</span> j = <span class="dv">0</span>; j != <span class="va">input_size_</span>; ++j)</span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true"></a>        {</span>
+<span id="cb21-8"><a href="#cb21-8" aria-hidden="true"></a>            <span class="va">input_gradients_</span>[j]</span>
+<span id="cb21-9"><a href="#cb21-9" aria-hidden="true"></a>                += <span class="va">weights_</span>[offset + j] * <span class="va">activation_gradients_</span>[i];</span>
+<span id="cb21-10"><a href="#cb21-10" aria-hidden="true"></a>        }</span>
+<span id="cb21-11"><a href="#cb21-11" aria-hidden="true"></a>    }</span></code></pre></div>
+<p>Note that unlike the weight and bias gradients which accumulate while training an entire batch of samples, the input gradients here are ephemeral and reset every pass since the only depend on the evaluation of an individual sample.</p>
+<p>Finally, to complete the <code>FFNode::reverse</code> method, the input gradients computed are based backwards for use in an antecedent node’s gradient update (reproduced below). The code as presented <em>does not work</em> with non-sequential computational graphs, but is meant to provide a starting point for futher experimentation.</p>
+<div class="sourceCode" id="cb22"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true"></a>    <span class="cf">for</span> (Node* node : <span class="va">antecedents_</span>)</span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true"></a>    {</span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true"></a>        node-&gt;reverse(<span class="va">input_gradients_</span>.data());</span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true"></a>    }</span></code></pre></div>
+<h3 id="the-categorical-cross-entropy-loss-node">The Categorical Cross-Entropy Loss Node</h3>
+<p>The last node we need to author is the node which computes the categorical cross-entropy of the prediction. A possible class definition for such this node is shown below:</p>
+<div class="sourceCode" id="cb23"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true"></a><span class="kw">class</span> CCELossNode : <span class="kw">public</span> Node</span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true"></a>{</span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true"></a><span class="kw">public</span>:</span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true"></a>    CCELossNode(Model&amp; model,</span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true"></a>                <span class="bu">std::</span>string name,</span>
+<span id="cb23-6"><a href="#cb23-6" aria-hidden="true"></a>                <span class="dt">uint16_t</span> input_size,</span>
+<span id="cb23-7"><a href="#cb23-7" aria-hidden="true"></a>                <span class="dt">size_t</span> batch_size);</span>
+<span id="cb23-8"><a href="#cb23-8" aria-hidden="true"></a></span>
+<span id="cb23-9"><a href="#cb23-9" aria-hidden="true"></a>    <span class="co">// No initialization is needed for this node</span></span>
+<span id="cb23-10"><a href="#cb23-10" aria-hidden="true"></a>    <span class="dt">void</span> init(<span class="dt">rne_t</span>&amp;) <span class="kw">override</span> {}</span>
+<span id="cb23-11"><a href="#cb23-11" aria-hidden="true"></a></span>
+<span id="cb23-12"><a href="#cb23-12" aria-hidden="true"></a>    <span class="dt">void</span> forward(<span class="dt">num_t</span>* inputs) <span class="kw">override</span>;</span>
+<span id="cb23-13"><a href="#cb23-13" aria-hidden="true"></a></span>
+<span id="cb23-14"><a href="#cb23-14" aria-hidden="true"></a>    <span class="co">// As a loss node, the argument to this method is ignored (the gradient of</span></span>
+<span id="cb23-15"><a href="#cb23-15" aria-hidden="true"></a>    <span class="co">// the loss with respect to itself is unity)</span></span>
+<span id="cb23-16"><a href="#cb23-16" aria-hidden="true"></a>    <span class="dt">void</span> reverse(<span class="dt">num_t</span>* gradients = <span class="kw">nullptr</span>) <span class="kw">override</span>;</span>
+<span id="cb23-17"><a href="#cb23-17" aria-hidden="true"></a></span>
+<span id="cb23-18"><a href="#cb23-18" aria-hidden="true"></a>    <span class="dt">void</span> print() <span class="at">const</span> <span class="kw">override</span>;</span>
+<span id="cb23-19"><a href="#cb23-19" aria-hidden="true"></a></span>
+<span id="cb23-20"><a href="#cb23-20" aria-hidden="true"></a>    <span class="co">// During training, this must be set to the expected target distribution</span></span>
+<span id="cb23-21"><a href="#cb23-21" aria-hidden="true"></a>    <span class="co">// for a given sample</span></span>
+<span id="cb23-22"><a href="#cb23-22" aria-hidden="true"></a>    <span class="dt">void</span> set_target(<span class="dt">num_t</span> <span class="at">const</span>* target)</span>
+<span id="cb23-23"><a href="#cb23-23" aria-hidden="true"></a>    {</span>
+<span id="cb23-24"><a href="#cb23-24" aria-hidden="true"></a>        <span class="va">target_</span> = target;</span>
+<span id="cb23-25"><a href="#cb23-25" aria-hidden="true"></a>    }</span>
+<span id="cb23-26"><a href="#cb23-26" aria-hidden="true"></a></span>
+<span id="cb23-27"><a href="#cb23-27" aria-hidden="true"></a>    <span class="dt">num_t</span> accuracy() <span class="at">const</span>;</span>
+<span id="cb23-28"><a href="#cb23-28" aria-hidden="true"></a>    <span class="dt">num_t</span> avg_loss() <span class="at">const</span>;</span>
+<span id="cb23-29"><a href="#cb23-29" aria-hidden="true"></a>    <span class="dt">void</span> reset_score();</span>
+<span id="cb23-30"><a href="#cb23-30" aria-hidden="true"></a></span>
+<span id="cb23-31"><a href="#cb23-31" aria-hidden="true"></a><span class="kw">private</span>:</span>
+<span id="cb23-32"><a href="#cb23-32" aria-hidden="true"></a>    <span class="dt">uint16_t</span> <span class="va">input_size_</span>;</span>
+<span id="cb23-33"><a href="#cb23-33" aria-hidden="true"></a></span>
+<span id="cb23-34"><a href="#cb23-34" aria-hidden="true"></a>    <span class="co">// We minimize the average loss, not the net loss so that the losses</span></span>
+<span id="cb23-35"><a href="#cb23-35" aria-hidden="true"></a>    <span class="co">// produced do not scale with batch size (which allows us to keep training</span></span>
+<span id="cb23-36"><a href="#cb23-36" aria-hidden="true"></a>    <span class="co">// parameters constant)</span></span>
+<span id="cb23-37"><a href="#cb23-37" aria-hidden="true"></a>    <span class="dt">num_t</span> <span class="va">inv_batch_size_</span>;</span>
+<span id="cb23-38"><a href="#cb23-38" aria-hidden="true"></a>    <span class="dt">num_t</span> <span class="va">loss_</span>;</span>
+<span id="cb23-39"><a href="#cb23-39" aria-hidden="true"></a>    <span class="dt">num_t</span> <span class="at">const</span>* <span class="va">target_</span>;</span>
+<span id="cb23-40"><a href="#cb23-40" aria-hidden="true"></a>    <span class="dt">num_t</span>* <span class="va">last_input_</span>;</span>
+<span id="cb23-41"><a href="#cb23-41" aria-hidden="true"></a>    <span class="co">// Stores the last active classification in the target one-hot encoding</span></span>
+<span id="cb23-42"><a href="#cb23-42" aria-hidden="true"></a>    <span class="dt">size_t</span> <span class="va">active_</span>;</span>
+<span id="cb23-43"><a href="#cb23-43" aria-hidden="true"></a>    <span class="dt">num_t</span> <span class="va">cumulative_loss_</span>{<span class="fl">0.0</span>};</span>
+<span id="cb23-44"><a href="#cb23-44" aria-hidden="true"></a>    <span class="co">// Store running counts of correct and incorrect predictions</span></span>
+<span id="cb23-45"><a href="#cb23-45" aria-hidden="true"></a>    <span class="dt">size_t</span> <span class="va">correct_</span>   = <span class="dv">0</span>;</span>
+<span id="cb23-46"><a href="#cb23-46" aria-hidden="true"></a>    <span class="dt">size_t</span> <span class="va">incorrect_</span> = <span class="dv">0</span>;</span>
+<span id="cb23-47"><a href="#cb23-47" aria-hidden="true"></a>    <span class="bu">std::</span>vector&lt;<span class="dt">num_t</span>&gt; <span class="va">gradients_</span>;</span>
+<span id="cb23-48"><a href="#cb23-48" aria-hidden="true"></a>};</span></code></pre></div>
+<p>The <code>CCELossNode</code> is similar to other nodes in that it implements a forward pass for computing the loss of a given sample, and a reverse pass to compute gradients of that loss and pass them back to the antecedent node. Distinct from the previous nodes is that the argument to <code>CCELossNode::reverse</code> is ignored as the loss node is not expected to have any subsequents.</p>
+<p>The implementation of <code>CCELossNode::forward</code> follows from the definition of cross-entropy, recalled here with some modifications:</p>
+<p><span class="math display">\hat{H}(\mathbf{y}, \hat{\mathbf{y}}) = -\sum_j \hat{y}_j\log \left(\max{y_j, \epsilon}\right) </span></p>
+<p>We’ve relabeled the two arguments to <span class="math inline">\hat{H}</span> as <span class="math inline">y</span> (the predicted distribution) and <span class="math inline">\hat{y}</span> (the true distribution). In addition, clamp the argument of the logarithm with a small <span class="math inline">\epsilon</span> to avoid a numerical singularity. The implementation is as follows:</p>
+<div class="sourceCode" id="cb24"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true"></a><span class="dt">void</span> CCELossNode::forward(<span class="dt">num_t</span>* data)</span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true"></a>{</span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true"></a>    <span class="dt">num_t</span> max{<span class="fl">0.0</span>};</span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true"></a>    <span class="dt">size_t</span> max_index;</span>
+<span id="cb24-5"><a href="#cb24-5" aria-hidden="true"></a></span>
+<span id="cb24-6"><a href="#cb24-6" aria-hidden="true"></a>    <span class="va">loss_</span> = <span class="dt">num_t</span>{<span class="fl">0.0</span>};</span>
+<span id="cb24-7"><a href="#cb24-7" aria-hidden="true"></a>    <span class="cf">for</span> (<span class="dt">size_t</span> i = <span class="dv">0</span>; i != <span class="va">input_size_</span>; ++i)</span>
+<span id="cb24-8"><a href="#cb24-8" aria-hidden="true"></a>    {</span>
+<span id="cb24-9"><a href="#cb24-9" aria-hidden="true"></a>        <span class="cf">if</span> (data[i] &gt; max)</span>
+<span id="cb24-10"><a href="#cb24-10" aria-hidden="true"></a>        {</span>
+<span id="cb24-11"><a href="#cb24-11" aria-hidden="true"></a>            max_index = i;</span>
+<span id="cb24-12"><a href="#cb24-12" aria-hidden="true"></a>            max       = data[i];</span>
+<span id="cb24-13"><a href="#cb24-13" aria-hidden="true"></a>        }</span>
+<span id="cb24-14"><a href="#cb24-14" aria-hidden="true"></a></span>
+<span id="cb24-15"><a href="#cb24-15" aria-hidden="true"></a>        <span class="va">loss_</span> -= <span class="va">target_</span>[i]</span>
+<span id="cb24-16"><a href="#cb24-16" aria-hidden="true"></a>                 * <span class="bu">std::</span>log(</span>
+<span id="cb24-17"><a href="#cb24-17" aria-hidden="true"></a>                     <span class="bu">std::</span>max(data[i], <span class="bu">std::</span>numeric_limits&lt;<span class="dt">num_t</span>&gt;::epsilon()));</span>
+<span id="cb24-18"><a href="#cb24-18" aria-hidden="true"></a></span>
+<span id="cb24-19"><a href="#cb24-19" aria-hidden="true"></a>        <span class="cf">if</span> (<span class="va">target_</span>[i] != <span class="dt">num_t</span>{<span class="fl">0.0</span>})</span>
+<span id="cb24-20"><a href="#cb24-20" aria-hidden="true"></a>        {</span>
+<span id="cb24-21"><a href="#cb24-21" aria-hidden="true"></a>            <span class="va">active_</span> = i;</span>
+<span id="cb24-22"><a href="#cb24-22" aria-hidden="true"></a>        }</span>
+<span id="cb24-23"><a href="#cb24-23" aria-hidden="true"></a>    }</span>
+<span id="cb24-24"><a href="#cb24-24" aria-hidden="true"></a></span>
+<span id="cb24-25"><a href="#cb24-25" aria-hidden="true"></a>    <span class="cf">if</span> (max_index == <span class="va">active_</span>)</span>
+<span id="cb24-26"><a href="#cb24-26" aria-hidden="true"></a>    {</span>
+<span id="cb24-27"><a href="#cb24-27" aria-hidden="true"></a>        ++<span class="va">correct_</span>;</span>
+<span id="cb24-28"><a href="#cb24-28" aria-hidden="true"></a>    }</span>
+<span id="cb24-29"><a href="#cb24-29" aria-hidden="true"></a>    <span class="cf">else</span></span>
+<span id="cb24-30"><a href="#cb24-30" aria-hidden="true"></a>    {</span>
+<span id="cb24-31"><a href="#cb24-31" aria-hidden="true"></a>        ++<span class="va">incorrect_</span>;</span>
+<span id="cb24-32"><a href="#cb24-32" aria-hidden="true"></a>    }</span>
+<span id="cb24-33"><a href="#cb24-33" aria-hidden="true"></a></span>
+<span id="cb24-34"><a href="#cb24-34" aria-hidden="true"></a>    <span class="va">cumulative_loss_</span> += <span class="va">loss_</span>;</span>
+<span id="cb24-35"><a href="#cb24-35" aria-hidden="true"></a></span>
+<span id="cb24-36"><a href="#cb24-36" aria-hidden="true"></a>    <span class="co">// Store the data pointer to compute gradients later</span></span>
+<span id="cb24-37"><a href="#cb24-37" aria-hidden="true"></a>    <span class="va">last_input_</span> = data;</span>
+<span id="cb24-38"><a href="#cb24-38" aria-hidden="true"></a>}</span></code></pre></div>
+<p>As with the feedforward node, a pointer to the inputs to the node is preserved to compute gradients later. A bit of bookkeeping is also done so we can track accuracy and accumulate loss during batch. The derivative of the loss of an individual sample with respect to the inputs is also fairly straightforward.</p>
+<p><span class="math display">
+\begin{aligned}
+\frac{\partial L}{\partial{y_i}} &amp;= \frac{\partial \left(-\sum_j \hat{y}_j\log{(\max{y_j, \epsilon)}}\right)}{\partial y_i} \\
+&amp;= -\frac{\hat{y_i}}{\max{(y_i, 0)}}
+\end{aligned}
+</span></p>
+<p>The implementation is similarly straightforward. As with the other nodes with loss gradients, the loss gradients with respect to all inputs are forwarded to antecedent nodes.</p>
+<div class="sourceCode" id="cb25"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true"></a><span class="dt">void</span> CCELossNode::reverse(<span class="dt">num_t</span>* data)</span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true"></a>{</span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true"></a>    <span class="cf">for</span> (<span class="dt">size_t</span> i = <span class="dv">0</span>; i != <span class="va">input_size_</span>; ++i)</span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true"></a>    {</span>
+<span id="cb25-5"><a href="#cb25-5" aria-hidden="true"></a>        <span class="va">gradients_</span>[i] = -<span class="va">inv_batch_size_</span> * <span class="va">target_</span>[i]</span>
+<span id="cb25-6"><a href="#cb25-6" aria-hidden="true"></a>            / <span class="bu">std::</span>max(<span class="va">last_input_</span>[i], <span class="bu">std::</span>numeric_limits&lt;<span class="dt">num_t</span>&gt;::epsilon());</span>
+<span id="cb25-7"><a href="#cb25-7" aria-hidden="true"></a>    }</span>
+<span id="cb25-8"><a href="#cb25-8" aria-hidden="true"></a></span>
+<span id="cb25-9"><a href="#cb25-9" aria-hidden="true"></a>    <span class="cf">for</span> (Node* node : <span class="va">antecedents_</span>)</span>
+<span id="cb25-10"><a href="#cb25-10" aria-hidden="true"></a>    {</span>
+<span id="cb25-11"><a href="#cb25-11" aria-hidden="true"></a>        node-&gt;reverse(<span class="va">gradients_</span>.data());</span>
+<span id="cb25-12"><a href="#cb25-12" aria-hidden="true"></a>    }</span>
+<span id="cb25-13"><a href="#cb25-13" aria-hidden="true"></a>}</span></code></pre></div>
+<p>One thing to keep in mind here is that this implementation is <em>not</em> the most efficient implementation possible for a softmax layer feeding to a cross-entropy loss function by any stretch. The code and derivation here is completely general for arbitrary sample probability distributions. If, however, we can assume that the target distribution is one-hot encoded, then all gradients in this node will either be 0 or <span class="math inline">-1/y_k</span> where <span class="math inline">k</span> is the active label in the one-hot target. Upon substitution in the previous layer, it should be clear that important cancellations are possible that dramatically simplify the gradient computations in the softmax layer. Here’s the simplification, again assuming that the <span class="math inline">k</span>th index is the correct label:</p>
+<p><span class="math display">
+\begin{aligned}
+\frac{\partial L}{\partial \mathrm{softmax}(\mathbf{z})_i} &amp;= \frac{\partial L}{\partial a_i}\sum_{j} \begin{cases}
+\mathrm{softmax}(\mathbf{z})_i\left(1 - \mathrm{softmax}(\mathbf{z})_i\right) &amp; i = j \\
+-\mathrm{softmax}(\mathbf{z})_i \mathrm{softmax}(\mathbf{z})_j &amp; i \neq j
+\end{cases} \\
+&amp;= \begin{dcases}
+-\frac{\mathrm{softmax}(\mathbf{z})_k(1 - \mathrm{softmax}(\mathbf{z}_k))}{\mathrm{softmax}(\mathbf{z})_k} &amp; i = k \\
+\frac{\mathrm{softmax}(\mathbf{z})_i\mathrm{softmax}(\mathbf{z})_k}{\mathrm{softmax}(\mathbf{z})_k} &amp; i \neq k\\
+\end{dcases} \\
+&amp;= \begin{dcases}
+\mathrm{softmax}(\mathbf{z})_k - 1 &amp; i = k \\
+\mathrm{softmax}(\mathbf{z})_i &amp; i \neq k
+\end{dcases}
+\end{aligned}
+</span></p>
+<p>When following the computation above, remember that <span class="math inline">\partial L / \partial a_i</span> is 0 for all <span class="math inline">i \neq k</span>. Thus, the only term in the sum that survives is the term corresponding to <span class="math inline">j = k</span>, at which point we break out the differentation depending on whether <span class="math inline">i = k</span> or <span class="math inline">i \neq k</span>.</p>
+<p>This is an elegant result! Essentially, the gradient of a the loss with respect to an emitted probability <span class="math inline">p(x)</span> is simply <span class="math inline">p(x)</span> if <span class="math inline">x</span> was not the correct label, and <span class="math inline">p(x) - 1</span> if it was. Considering the effect of gradient descent, this should check out with our intuition. The optimizer seeks to suppress probabilities predicted that should have been 0, and increase probabilities predicted that should have been 1.</p>
+<p>This sort of optimization highlights an important observation about backpropagation, namely, that they do not guarantee any sort of optimality beyond a worst-case performance ceiling. Several production neural networks have architectures that employ heuristics to identify optimizations such as this one, but the problem of generating a perfect computational strategy is NP and so not covered here. The code provided here will remain in the general form, despite being slower in the interest of maintaining generality and not adding complexity, but you are encouraged to consider abstractions to permit this type of optimization in your own architecture.</p>
+<p>The last thing we need to provide for <code>CCELossNode</code> are a few helper routines:</p>
+<div class="sourceCode" id="cb26"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true"></a><span class="dt">void</span> CCELossNode::print() <span class="at">const</span></span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true"></a>{</span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true"></a>    <span class="bu">std::</span>printf(<span class="st">&quot;Avg Loss: </span><span class="sc">%f\t%f%%</span><span class="st"> correct</span><span class="sc">\n</span><span class="st">&quot;</span>, avg_loss(), accuracy() * <span class="fl">100.0</span>);</span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true"></a>}</span>
+<span id="cb26-5"><a href="#cb26-5" aria-hidden="true"></a></span>
+<span id="cb26-6"><a href="#cb26-6" aria-hidden="true"></a><span class="dt">num_t</span> CCELossNode::accuracy() <span class="at">const</span></span>
+<span id="cb26-7"><a href="#cb26-7" aria-hidden="true"></a>{</span>
+<span id="cb26-8"><a href="#cb26-8" aria-hidden="true"></a>    <span class="cf">return</span> <span class="kw">static_cast</span>&lt;<span class="dt">num_t</span>&gt;(<span class="va">correct_</span>)</span>
+<span id="cb26-9"><a href="#cb26-9" aria-hidden="true"></a>           / <span class="kw">static_cast</span>&lt;<span class="dt">num_t</span>&gt;(<span class="va">correct_</span> + <span class="va">incorrect_</span>);</span>
+<span id="cb26-10"><a href="#cb26-10" aria-hidden="true"></a>}</span>
+<span id="cb26-11"><a href="#cb26-11" aria-hidden="true"></a><span class="dt">num_t</span> CCELossNode::avg_loss() <span class="at">const</span></span>
+<span id="cb26-12"><a href="#cb26-12" aria-hidden="true"></a>{</span>
+<span id="cb26-13"><a href="#cb26-13" aria-hidden="true"></a>    <span class="cf">return</span> <span class="va">cumulative_loss_</span> / <span class="kw">static_cast</span>&lt;<span class="dt">num_t</span>&gt;(<span class="va">correct_</span> + <span class="va">incorrect_</span>);</span>
+<span id="cb26-14"><a href="#cb26-14" aria-hidden="true"></a>}</span>
+<span id="cb26-15"><a href="#cb26-15" aria-hidden="true"></a></span>
+<span id="cb26-16"><a href="#cb26-16" aria-hidden="true"></a><span class="dt">void</span> CCELossNode::reset_score()</span>
+<span id="cb26-17"><a href="#cb26-17" aria-hidden="true"></a>{</span>
+<span id="cb26-18"><a href="#cb26-18" aria-hidden="true"></a>    <span class="va">cumulative_loss_</span> = <span class="dt">num_t</span>{<span class="fl">0.0</span>};</span>
+<span id="cb26-19"><a href="#cb26-19" aria-hidden="true"></a>    <span class="va">correct_</span>         = <span class="dv">0</span>;</span>
+<span id="cb26-20"><a href="#cb26-20" aria-hidden="true"></a>    <span class="va">incorrect_</span>       = <span class="dv">0</span>;</span>
+<span id="cb26-21"><a href="#cb26-21" aria-hidden="true"></a>}</span></code></pre></div>
+<p>These routines let us examine the progress of our network during training in terms of both loss and accuracy.</p>
+<h3 id="gradient-descent-optimizer">Gradient Descent Optimizer</h3>
+<p>At some point after loss gradients with respect to model parameters have accumulated, the gradients will need to be used to actually adjust the parameters themselves. This is provided by the <code>GDOptimizer</code> class implemented as below:</p>
+<div class="sourceCode" id="cb27"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true"></a><span class="kw">class</span> GDOptimizer : <span class="kw">public</span> Optimizer</span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true"></a>{</span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true"></a><span class="kw">public</span>:</span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true"></a>    <span class="co">// &quot;Eta&quot; is the commonly accepted character used to denote the learning</span></span>
+<span id="cb27-5"><a href="#cb27-5" aria-hidden="true"></a>    <span class="co">// rate. Given a loss gradient dL/dp for some parameter p, during gradient</span></span>
+<span id="cb27-6"><a href="#cb27-6" aria-hidden="true"></a>    <span class="co">// descent, p will be adjusted such that p&#39; = p - eta * dL/dp.</span></span>
+<span id="cb27-7"><a href="#cb27-7" aria-hidden="true"></a>    GDOptimizer(<span class="dt">num_t</span> eta) : <span class="va">eta_</span>{eta} {}</span>
+<span id="cb27-8"><a href="#cb27-8" aria-hidden="true"></a></span>
+<span id="cb27-9"><a href="#cb27-9" aria-hidden="true"></a>    <span class="co">// This should be invoked at the end of each batch&#39;s evaluation. The</span></span>
+<span id="cb27-10"><a href="#cb27-10" aria-hidden="true"></a>    <span class="co">// interface technically permits the use of different optimizers for</span></span>
+<span id="cb27-11"><a href="#cb27-11" aria-hidden="true"></a>    <span class="co">// different segments of the computational graph.</span></span>
+<span id="cb27-12"><a href="#cb27-12" aria-hidden="true"></a>    <span class="dt">void</span> train(Node&amp; node) <span class="kw">override</span>;</span>
+<span id="cb27-13"><a href="#cb27-13" aria-hidden="true"></a></span>
+<span id="cb27-14"><a href="#cb27-14" aria-hidden="true"></a><span class="kw">private</span>:</span>
+<span id="cb27-15"><a href="#cb27-15" aria-hidden="true"></a>    <span class="dt">num_t</span> <span class="va">eta_</span>;</span>
+<span id="cb27-16"><a href="#cb27-16" aria-hidden="true"></a>};</span>
+<span id="cb27-17"><a href="#cb27-17" aria-hidden="true"></a></span>
+<span id="cb27-18"><a href="#cb27-18" aria-hidden="true"></a><span class="dt">void</span> GDOptimizer::train(Node&amp; node)</span>
+<span id="cb27-19"><a href="#cb27-19" aria-hidden="true"></a>{</span>
+<span id="cb27-20"><a href="#cb27-20" aria-hidden="true"></a>    <span class="dt">size_t</span> param_count = node.param_count();</span>
+<span id="cb27-21"><a href="#cb27-21" aria-hidden="true"></a>    <span class="co">// std::printf(&quot;%s Param count: %zu\n&quot;, node.name().c_str(), param_count);</span></span>
+<span id="cb27-22"><a href="#cb27-22" aria-hidden="true"></a>    <span class="cf">for</span> (<span class="dt">size_t</span> i = <span class="dv">0</span>; i != param_count; ++i)</span>
+<span id="cb27-23"><a href="#cb27-23" aria-hidden="true"></a>    {</span>
+<span id="cb27-24"><a href="#cb27-24" aria-hidden="true"></a>        <span class="dt">num_t</span>&amp; param    = *node.param(i);</span>
+<span id="cb27-25"><a href="#cb27-25" aria-hidden="true"></a>        <span class="dt">num_t</span>&amp; gradient = *node.gradient(i);</span>
+<span id="cb27-26"><a href="#cb27-26" aria-hidden="true"></a></span>
+<span id="cb27-27"><a href="#cb27-27" aria-hidden="true"></a>        param = param - <span class="va">eta_</span> * gradient;</span>
+<span id="cb27-28"><a href="#cb27-28" aria-hidden="true"></a></span>
+<span id="cb27-29"><a href="#cb27-29" aria-hidden="true"></a>        <span class="co">// Reset the gradient which will be accumulated again in the next</span></span>
+<span id="cb27-30"><a href="#cb27-30" aria-hidden="true"></a>        <span class="co">// training epoch</span></span>
+<span id="cb27-31"><a href="#cb27-31" aria-hidden="true"></a>        gradient = <span class="dt">num_t</span>{<span class="fl">0.0</span>};</span>
+<span id="cb27-32"><a href="#cb27-32" aria-hidden="true"></a>    }</span>
+<span id="cb27-33"><a href="#cb27-33" aria-hidden="true"></a>}</span></code></pre></div>
+<p>Not shown is the <code>Optimizer</code> class interface which simply provides a virtual <code>train</code> method. As you implement more sophisticated optimizers, you will find that more state may be needed to perform necessary tasks (e.g. computing gradient moving averages). Also implicit in this implementation is that our <code>Node</code> classes need to provide an indexing scheme for each parameter as well as an accessor for the total number of parameters. For example, accessing the <code>FFNode</code> parameters is a fairly simple matter:</p>
+<div class="sourceCode" id="cb28"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true"></a><span class="dt">num_t</span>* FFNode::param(<span class="dt">size_t</span> index)</span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true"></a>{</span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true"></a>    <span class="cf">if</span> (index &lt; <span class="va">weights_</span>.size())</span>
+<span id="cb28-4"><a href="#cb28-4" aria-hidden="true"></a>    {</span>
+<span id="cb28-5"><a href="#cb28-5" aria-hidden="true"></a>        <span class="cf">return</span> &amp;<span class="va">weights_</span>[index];</span>
+<span id="cb28-6"><a href="#cb28-6" aria-hidden="true"></a>    }</span>
+<span id="cb28-7"><a href="#cb28-7" aria-hidden="true"></a>    <span class="cf">return</span> &amp;<span class="va">biases_</span>[index - <span class="va">weights_</span>.size()];</span>
+<span id="cb28-8"><a href="#cb28-8" aria-hidden="true"></a>}</span></code></pre></div>
+<p>The parameters are indexed 0 through the return value of <code>Node::param_count()</code> minus one. Note that the optimizer doesn’t care whether the parameter accessed in this way is a weight, bias, average, etc. As a trainable parameter, the only thing that matters during gradient descent is the current value and the loss gradient.</p>
+<h2 id="tying-it-all-together">Tying it all Together</h2>
+<p>Now that we have the individual nodes implemented, all that remains is to wire things up and start training! This is how we can construct a model with a input, hidden, output, and loss nodes, all wired sequentially.</p>
+<div class="sourceCode" id="cb29"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true"></a>    Model model{<span class="st">&quot;ff&quot;</span>};</span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true"></a></span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true"></a>    MNIST&amp; mnist = &amp;model.add_node&lt;MNIST&gt;(images, labels);</span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true"></a></span>
+<span id="cb29-5"><a href="#cb29-5" aria-hidden="true"></a>    FFNode&amp; hidden = model.add_node&lt;FFNode&gt;(<span class="st">&quot;hidden&quot;</span>, Activation::ReLU, <span class="dv">32</span>, <span class="dv">784</span>);</span>
+<span id="cb29-6"><a href="#cb29-6" aria-hidden="true"></a></span>
+<span id="cb29-7"><a href="#cb29-7" aria-hidden="true"></a>    FFNode&amp; output</span>
+<span id="cb29-8"><a href="#cb29-8" aria-hidden="true"></a>        = model.add_node&lt;FFNode&gt;(<span class="st">&quot;output&quot;</span>, Activation::Softmax, <span class="dv">10</span>, <span class="dv">32</span>);</span>
+<span id="cb29-9"><a href="#cb29-9" aria-hidden="true"></a></span>
+<span id="cb29-10"><a href="#cb29-10" aria-hidden="true"></a>    CCELossNode&amp; loss = &amp;model.add_node&lt;CCELossNode&gt;(<span class="st">&quot;loss&quot;</span>, <span class="dv">10</span>, batch_size);</span>
+<span id="cb29-11"><a href="#cb29-11" aria-hidden="true"></a>    loss.set_target(mnist.label());</span>
+<span id="cb29-12"><a href="#cb29-12" aria-hidden="true"></a></span>
+<span id="cb29-13"><a href="#cb29-13" aria-hidden="true"></a>    model.create_edge(hidden, mnist);</span>
+<span id="cb29-14"><a href="#cb29-14" aria-hidden="true"></a>    model.create_edge(output, hidden);</span>
+<span id="cb29-15"><a href="#cb29-15" aria-hidden="true"></a>    model.create_edge(loss, output);</span>
+<span id="cb29-16"><a href="#cb29-16" aria-hidden="true"></a>    </span>
+<span id="cb29-17"><a href="#cb29-17" aria-hidden="true"></a>    <span class="co">// This function should visit all constituent nodes and initialize</span></span>
+<span id="cb29-18"><a href="#cb29-18" aria-hidden="true"></a>    <span class="co">// their parameters</span></span>
+<span id="cb29-19"><a href="#cb29-19" aria-hidden="true"></a>    model.init();</span>
+<span id="cb29-20"><a href="#cb29-20" aria-hidden="true"></a>    </span>
+<span id="cb29-21"><a href="#cb29-21" aria-hidden="true"></a>    <span class="co">// Create a gradient descent optimizer with a hardcoded learning rate</span></span>
+<span id="cb29-22"><a href="#cb29-22" aria-hidden="true"></a>    GDOptimizer optimizer{<span class="dt">num_t</span>{<span class="fl">0.3</span>}};</span></code></pre></div>
+<p>As mentioned before, the “edges” are somewhat cosmetic as none of our nodes actually support multiple node inputs or outputs. An actual implementation that would support such a non-sequential topology will likely need a sort of signals and slots abstraction. The interface provided here is strictly to impress on you the importance of the abstraction of our neural network as a computational graph, which is critical when additional complexity is added later.</p>
+<p>With this, we are ready to implement the core loop of the training algorithm.</p>
+<div class="sourceCode" id="cb30"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true"></a>    <span class="cf">for</span> (<span class="dt">size_t</span> i = <span class="dv">0</span>; i != <span class="dv">256</span>; ++i)</span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true"></a>    {</span>
+<span id="cb30-3"><a href="#cb30-3" aria-hidden="true"></a>        <span class="cf">for</span> (<span class="dt">size_t</span> j = <span class="dv">0</span>; j != <span class="dv">64</span>; ++j)</span>
+<span id="cb30-4"><a href="#cb30-4" aria-hidden="true"></a>        {</span>
+<span id="cb30-5"><a href="#cb30-5" aria-hidden="true"></a>            mnist-&gt;forward();</span>
+<span id="cb30-6"><a href="#cb30-6" aria-hidden="true"></a>            loss-&gt;reverse();</span>
+<span id="cb30-7"><a href="#cb30-7" aria-hidden="true"></a>        }</span>
+<span id="cb30-8"><a href="#cb30-8" aria-hidden="true"></a></span>
+<span id="cb30-9"><a href="#cb30-9" aria-hidden="true"></a>        model.train(optimizer);</span>
+<span id="cb30-10"><a href="#cb30-10" aria-hidden="true"></a>    }</span></code></pre></div>
+<p>Here, we train our model over 256 batches. Each batch consists of 64 samples, and for each sample, we invoke <code>MNIST::forward</code> and <code>CCELossNode::reverse</code>. During the forward pass, our <code>MNIST</code> node extracts a new sample and label and forwards the sample data to the next node. This data propagates through the network until the final output distribution is passed to the loss node and losses are computed. All this occurs within the single line: <code>mnist-&gt;forward()</code>. In the subsequent line, gradients are computed and passed back until the reverse accumulation terminates at the <code>MNIST</code> node again. After all gradients for the batch are accumulated, the model can <code>train</code>, which invokes the optimizer on each node to simultaneously adjust all model parameters for each node.</p>
+<p>After adding some additional logging, the results of the network look like this:</p>
+<pre><code>Executing training routine
+Loaded images file with 60000 entries
+hidden: 784 -&gt; 32
+output: 32 -&gt; 10
+Initializing model parameters with seed: 116726080
+Avg Loss: 0.254111  96.875000% correct</code></pre>
+<p>To evaluate the efficacy of the model, we can serialize all the parameters to disk, load them up, disable the training step, and evaluate the model on the test data. For this particular run, the results were as follows:</p>
+<pre><code>Executing evaluation routine
+Loaded images file with 10000 entries
+hidden: 784 -&gt; 32
+output: 32 -&gt; 10
+Avg Loss: 0.292608  91.009998% correct</code></pre>
+<p>As you can see, the accuracy dropped on the test data relative to the training data. This is a hallmark characterstic of <em>overfitting</em>, which is to be expected given that we haven’t implemented any regularization whatsoever!</p>
+<h3 id="regularization">Regularization</h3>
+<p>The dimensionality of our model will often be much higher than needed to optimally make accurate predictions. Thus, the likelihood of overfitting increases as more training data is fed into the model. The primary tool to combat overfitting is <em>regularization</em>. Loosely speaking, regularization is any strategy employed to restrict the hypothesis space of fit-functions the model can occcupy to prevent overfitting.</p>
+<p>What is meant by restricting the hypothesis space, you might ask? The idea is to consider the entire family of functions possible spanned by the model’s entire parameter vector. If our model has 10000 parameters (many networks will easily exceed this), each unique 10000-dimensional vector corresponds to a possible solution. However, we know it’s unlikely that certain parameters should be vastly greater in magnitude than others in a theoretically <em>optimal</em> condition. Models with “strange” parameter vectors that are unlikely to be the optimal solution are likely converged on as a result of overfitting. Therefore, it makes sense to consider ways to constrain the space this parameter vector may occupy.</p>
+<p>The most common approach to achieve this is to add an initial penalty term to the loss function which is a function of the weight. For example, here is the cross-entropy loss with the so-called <span class="math inline">L^2</span> regularizer (also known as the ridge regularizer) added:</p>
+<p><span class="math display">-\sum_{x\in X} \hat{y}_x \log{y_x} + \frac{\lambda}{2} \mathbf{w}^{T}\mathbf{w}</span></p>
+<p>In a slight abuse of notation, <span class="math inline">\mathbf{w}</span> here corresponds to a vector containing every weight in our network. The factor <span class="math inline">\lambda</span> is a constant we can choose to adjust the penalty size. Note that when a regularizer is used, we <em>expect training loss to increase</em>. The tradeoff is that we simultaneously <em>expect test loss to decrease</em>. Tuning the regularization speed <span class="math inline">\lambda</span> is a routine problem for model fitting in the wild.</p>
+<p>By modifying the loss function, in principal, all loss gradients must change as well. Fortunately, as we’ve only added a quadratic term to the loss, the only change to the gradient will be an additional linear additive term <span class="math inline">\lambda\mathbf{w}</span>. This means we don’t have to add a ton of code to modify all the gradient calculations thus far. Instead, we can simply <em>decay</em> the weight based on a percentage of the weight’s magnitude when we adjust the weight after each batch is performed. You will often here this type of regularization referred to as simply <em>weight decay</em> for this reason.</p>
+<p>To implement <span class="math inline">L^2</span> regularization, simply add a percentage of a weight’s value to its loss gradient. Crucially, do not adjust bias parameters in the same way. We only wish to penalize parameters for which increased magnitude corresponds with more complex models. Bias parameters are simply scalar offsets, regardless of their value and do not scale the inputs. Thus, attempting to regularize them will likely increase <em>both</em> training and test error.</p>
+<p>While regularization is a fundamental part of any deep learning framework, its implementation will not be shown here explicitly.</p>
+<h2 id="where-to-go-from-here">Where to go from here</h2>
+<p>At this point, the <em>toy</em> network is complete. With any luck, you’ve taken away a few key patterns that will aid in both your intuition about how deep learning techniques work, and your efforts to actually implement them. The implementation presented here is both far from complete, and far from ideal. Critically missing is adequate visualization for the error rate as a function of training time, mis-predicted samples, and the model parameters themselves. Without visualization, model tuning can be time consuming, veering on impossible. In addition, our model training samples are always ingested in the order they are provided in the training file. In practice, this sequence should be shuffled to avoid introducing training bias.</p>
+<p>Here are a few additional things you can try, in no particular order.</p>
+<ul>
+<li>Add various regularization modes such as <span class="math inline">L^2</span>, <span class="math inline">L^1</span>, or dropout.</li>
+<li>Track loss reduction momentum to implement <em>early stopping</em>, thereby reducing wasted training cycles</li>
+<li>Implement a convolution node with a variable sized weight filter. You will likely need to implement the max-pooling operation as well.</li>
+<li>Implement a batch-normalization node.</li>
+<li>Modify the interfaces provided here so that <code>Node::forward</code> and <code>Node::reverse</code> also pass slot ids to handle nodes with multiple inputs and outputs.</li>
+<li>Leverage the slots abstraction above to implement a residual network.</li>
+<li>Improve efficiency by adding support for SIMD or GPU-based compute kernels.</li>
+<li>Add multithreading to allow separate batches to be trained simultaneously.</li>
+<li>Provide alternative optimizers that decay the learning rate over time, or decay the learning rate as a function of loss momentum.</li>
+<li>Add a “meta-training” feature that can tune <em>hyperparameters</em> used to configure your model (e.g. learning rate, regularization rate, network depth, layer dimension).</li>
+<li>Pick a research paper you’re interested in and endeavor to implement it end to end.</li>
+</ul>
+<p>As you can see, the sky’s the limit and there is simply no end to the amount of work possible to improve a neural network’s ability to learn and make inferences. A good body of work is also there to improve tooling around data ingestion, model configuration serialization, automated testing, continuous learning in the cloud, etc. Crucially though, new research and development is constantly in the works in this ever-changing field. On top of studying deep learning as a discipline in and of itself, there is plenty of room for specialization in particular domains, be it computer vision, NLP, epidemiology, or something else. My hope is that for some of you, the neural network in a weekend may take the form of a neural network in a fulfilling career or lifetime.</p>
+</body>
+</html>

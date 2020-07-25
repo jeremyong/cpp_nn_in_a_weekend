@@ -10,7 +10,8 @@
 // Default precision: single
 using num_t = float;
 // Default random number engine: 32-bit Mersenne Twister by Matsumoto and
-// Nishimura, 1998
+// Nishimura, 1998. For generating random numbers with double precision, the
+// 64-bit Mersenne Twister should be used.
 using rne_t = std::mt19937;
 
 enum class Activation

@@ -36,12 +36,21 @@ FFNode::FFNode(Model& model,
 
 void FFNode::init(rne_t& rne)
 {
-    // Kaiming He, et. al. weight initialization for ReLU networks
-    // https://arxiv.org/pdf/1502.01852.pdf
-    //
-    // Suggests using a normal distribution with variance := 2 / n_in
-
-    num_t sigma = std::sqrt(2.0 / static_cast<num_t>(input_size_));
+    num_t sigma;
+    switch (activation_)
+    {
+    case Activation::ReLU:
+        // Kaiming He, et. al. weight initialization for ReLU networks
+        // https://arxiv.org/pdf/1502.01852.pdf
+        //
+        // Suggests using a normal distribution with variance := 2 / n_in
+        sigma = std::sqrt(2.0 / static_cast<num_t>(input_size_));
+        break;
+    case Activation::Softmax:
+    default:
+        sigma = std::sqrt(1.0 / static_cast<num_t>(input_size_));
+        break;
+    }
 
     // NOTE: Unfortunately, the C++ standard does not guarantee that the results
     // obtained from a distribution function will be identical given the same
@@ -90,20 +99,20 @@ void FFNode::forward(num_t* inputs)
         // Add neuron bias
         z += biases_[i];
 
-        activations_[i] = z;
+        switch (activation_)
+        {
+        case Activation::ReLU:
+            activations_[i] = std::max(z, num_t{0.0});
+            break;
+        case Activation::Softmax:
+        default:
+            activations_[i] = std::exp(z);
+            break;
+        }
     }
 
-    switch (activation_)
+    if (activation_ == Activation::Softmax)
     {
-    case Activation::ReLU:
-        // Rectified linear unit
-        for (size_t i = 0; i != output_size_; ++i)
-        {
-            activations_[i] = std::max(activations_[i], num_t{0.0});
-        }
-        break;
-    case Activation::Softmax:
-    default: {
         // softmax(z)_i = exp(z_i) / \sum_j(exp(z_j))
         num_t sum_exp_z{0.0};
         for (size_t i = 0; i != output_size_; ++i)
@@ -111,7 +120,6 @@ void FFNode::forward(num_t* inputs)
             // NOTE: with exploding gradients, it is quite easy for this
             // exponential function to overflow, which will result in NaNs
             // infecting the network.
-            activations_[i] = std::exp(activations_[i]);
             sum_exp_z += activations_[i];
         }
         num_t inv_sum_exp_z = num_t{1.0} / sum_exp_z;
@@ -119,8 +127,6 @@ void FFNode::forward(num_t* inputs)
         {
             activations_[i] *= inv_sum_exp_z;
         }
-        break;
-    }
     }
 
     // Forward activation data to all subsequent nodes in the computational

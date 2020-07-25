@@ -8,7 +8,7 @@
 #include <cstring>
 #include <filesystem>
 
-static constexpr size_t batch_size = 64;
+static constexpr size_t batch_size = 80;
 
 Model create_model(std::ifstream& images,
                    std::ifstream& labels,
@@ -76,8 +76,11 @@ void train(char* argv[])
     // vascillate, indicating that the model is starting to overfit the data.
     // Implement some form of loss-improvement measure to determine when this
     // inflection point occurs and stop accordingly.
-    for (size_t i = 0; i != 256; ++i)
+    size_t i = 0;
+    for (; i != 256; ++i)
     {
+        loss->reset_score();
+
         for (size_t j = 0; j != batch_size; ++j)
         {
             mnist->forward();
@@ -85,12 +88,9 @@ void train(char* argv[])
         }
 
         model.train(optimizer);
-        if (i == 254)
-        {
-            // Reset the cumulative loss counters just before the final batch
-            loss->reset_score();
-        }
     }
+
+    printf("Ran %i batches (%i samples each)\n", i, batch_size);
 
     // Print the average loss computed in the final batch
     loss->print();

@@ -1,4 +1,6 @@
 #include "GDOptimizer.hpp"
+#include "Model.hpp"
+#include <cmath>
 
 GDOptimizer::GDOptimizer(num_t eta)
     : eta_{eta}

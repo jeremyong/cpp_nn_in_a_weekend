@@ -95,7 +95,7 @@ void CCELossNode::reverse(num_t* data)
 
 void CCELossNode::print() const
 {
-    std::printf("Avg Loss: %f\t%f%% correct\n", avg_loss(), accuracy());
+    std::printf("Avg Loss: %f\t%f%% correct\n", avg_loss(), accuracy() * 100.0);
 }
 
 num_t CCELossNode::accuracy() const
