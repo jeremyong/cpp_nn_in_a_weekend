@@ -233,7 +233,7 @@ void FFNode::reverse(num_t* gradients)
     // values are used primarily as a subexpression in computing upstream
     // gradients and do not participate in the network optimization step (aka
     // Stochastic Gradient Descent) later.
-    std::fill(input_gradients_.begin(), input_gradients_.end(), 0);
+    std::fill(input_gradients_.begin(), input_gradients_.end(), num_t{0.0});
 
     // To compute dz/dI_i, recall that z_i = \sum_i W_i*I_i + B_i. That is, the
     // precursor to each activation is a dot-product between a weight vector an
@@ -312,7 +312,7 @@ void FFNode::print() const
         size_t offset = i * input_size_;
         for (size_t j = 0; j != input_size_; ++j)
         {
-            std::printf("\t[%d]%f", offset + j, weights_[offset + j]);
+            std::printf("\t[%zu]%f", offset + j, weights_[offset + j]);
         }
         std::printf("\n");
     }

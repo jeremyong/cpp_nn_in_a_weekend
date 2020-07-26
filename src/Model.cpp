@@ -24,7 +24,7 @@ rne_t::result_type Model::init(rne_t::result_type seed)
         std::random_device rd{};
         seed = rd();
     }
-    std::printf("Initializing model parameters with seed: %zu\n", seed);
+    std::printf("Initializing model parameters with seed: %u\n", seed);
 
     rne_t rne{seed};
 

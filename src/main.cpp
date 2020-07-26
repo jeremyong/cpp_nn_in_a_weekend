@@ -90,7 +90,7 @@ void train(char* argv[])
         model.train(optimizer);
     }
 
-    printf("Ran %i batches (%i samples each)\n", i, batch_size);
+    std::printf("Ran %zu batches (%zu samples each)\n", i, batch_size);
 
     // Print the average loss computed in the final batch
     loss->print();
