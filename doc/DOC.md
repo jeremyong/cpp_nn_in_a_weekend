@@ -42,7 +42,7 @@ Suppose we have a task we would like a machine learning model to complete (e.g. 
 At a high level, we need to perform the following tasks:
 
 1. First, we must conceptualize the task as a "function" such that the inputs and outputs of the task can be described in a concrete mathematical sense (amenable for programmability).
-2. Second, we need a way to quantify the degree to which our model is performing poorly against a known set of correct answers. This is typically denoted as the *loss* function of the model.
+2. Second, we need a way to quantify the degree to which our model is performing poorly against a known set of correct answers. This is typically denoted as the *loss* or *objective* function of the model.
 3. Third, we need an *optimization strategy* which will describe how to adjust the model after feedback is provided regarding the model's performance as per the loss function described above.
 4. Fourth, we need a *regularization strategy* to address inadvertently tuning the model with a high degree of specificity to our training data, at the cost of generalized performance when handling inputs not yet encountered.
 5. Fifth, we need an *architecture* for our model, including how inputs are transformed into outputs and an enumaration of all the adjustable parameters the model supports.
@@ -51,6 +51,7 @@ At a high level, we need to perform the following tasks:
 *Deep learning* is distinct from other machine learning models in that the architecture is heavily over-parameterized and based on simpler *building blocks* as opposed to bespoke components.
 The building blocks used are neurons, or particular arrangements of neurons, typically organized as layers.
 Over the course of training a deep learning model, it is expected that *features* of the inputs are learned and manifested as various parameter values in these neurons.
+This is in contrast to traditional machine learning, where features are not learned, but implemented directly.
 
 ### Categorical Cross-Entropy Loss
 
@@ -60,7 +61,7 @@ Instead of describing the architecture of the model first, we'll start with unde
 and how to assess the model's performance.
 The output of our model will be a 10-dimensional vector, representing the probability distribution of the supplied input.
 That is, each element of the output vector indicates the model's estimation of the probability that the digit's value matches the corresponding element index.
-If the model outputs:
+For example, if the model outputs:
 
 $$M(\mathbf{I}) = \left[0, 0, 0.5, 0.5, 0, 0, 0, 0, 0, 0\right]$$
 
@@ -81,6 +82,7 @@ The negation ensures that this is a positive quantity, and by inspection, the en
 Conversely, in the limit as $P(E)$ approaches $1$, the entropy shrinks to $0$.
 While several interpretations of entropy are possible, the pertinent interpretation here is that entropy is a *measure of the information conveyed when a particular event occurs*.
 That the "sun rose this morning" is a fairly mundane observation but being told "the sun exploded" is sure to pique your attention.
+Because we are reasonably certain that the sun rises each morning (with near 100% confidence), that "the sun rises" is an event that conveys little additional information when it occurs.
 
 Let's consider next entropy in the context of a probability distribution.
 Given a discrete random variable $X$ which can take on values $x_0, \dots, x_{n-1}$ with
@@ -88,12 +90,13 @@ probabilities $p(x_0), \dots, p(x_{n-1})$, the entropy of the random variable $X
 
 $$H(X) = -\sum_{x \in X} p(x) \log p(x)$$
 
-For example, suppose $W$ is a random variable that represents today's weather which can either be "sunny" or "rainy" (a binary random variable).
+For example, suppose $W$ is a binary random variable that represents today's weather which can either be "sunny" or "rainy" (a binary random variable).
 The entropy $H(W)$ can be given as:
 
 $$H(W) = -S\log S - (1 - S) \log (1 - S)$$
 
 where $S$ is the probability of a sunny day, and hence $1 - S$ is the probability of a rainy day.
+As a binary random variable, the summation over weighted entropies expands to only two terms.
 What does this quantity mean?
 If we were to describe it in words, each term of the sum in the entropy calculation corresponds to the information of a particular event, weighted by the probability of the event.
 Thus, the entropy of the distribution is literally the *expected amount of information contained in an event* for a given distribution.
@@ -127,11 +130,13 @@ plt.title('Binary Entropy')
 ```
 
 As a minor note, while $\log 0$ is an undefined quantity, information theorists accept that $\lim_{p\rightarrow 0} p\log p = 0$ by convention.
+Intuitively, the expected entropy should be unaffected by the set of impossible events.
 
-Intuitively, when the distribution is 50-50, the uncertainty of a binary is maximal,
+As you might expect, when the distribution is 50-50, the uncertainty of a binary is maximal,
 and by extension the amount of information contained in each event is maximized too.
 Put another way, if you lived in an area where it was always sunny, you wouldn't *learn anything*
-if someone told you it was sunny today.
+if someone told you it was sunny today. However, in a tropical region characterized by capricious weather,
+information conveyed about the weather is far more meaningful.
 
 In the previous example, we weighted the event entropies according to the event's probability distribution.
 What would happen if, instead, we used weights corresponding to a *different* probability distribution?
@@ -175,7 +180,7 @@ Given that the entropy of a given probability distribution $p$ is constant, then
 This is why in practice, we will generally seek to minimize the cross entropy between $p$ and a predicted distribution $q$,
 which by extension will minimize the Kullback-Leibler divergence as well.
 
-Now, we have the tools to know if our model is succeeding or not! Given an estimation, say,
+Now, we have the tools to know if our model is succeeding or not! Given an estimation of a sample's label as before:
 
 $$M(\mathbf{I}) = \left[0, 0, 0.5, 0.5, 0, 0, 0, 0, 0, 0\right]$$
 
@@ -275,7 +280,8 @@ Each of the 784 input values fan out to each of the nodes in the hidden layer wi
 
 In the center hidden layer, we have a variable number of nodes that each receive all 784 inputs, perform some processing,
 and fan out the result to the output nodes on the far right.
-That is, each node in the hidden layer transforms a $\mathbb{R}^{784}$ vector into a $\mathbb{R}^n$ vector.
+That is, each node in the hidden layer transforms a $\mathbb{R}^{784}$ vector into a scalar output,
+so as a whole, the $n$ nodes collectively need to map $\mathbb{R}^\rightarrow \mathbb{R}^n$.
 The simplest way to do this is with an $n\times 784$ matrix (treating inputs as column vectors).
 Modeling the hidden layer this way, each of the $n$ nodes in the hidden layer is associated with a single row
 in our $\mathbb{R}^{n\times 784}$ matrix. Each entry of this matrix is referred to as a *weight*.
@@ -284,9 +290,10 @@ We still have two issues we need to address however. First, a matrix provides a 
 two spaces, and linear maps take $0$ to $0$ (you can visualize such maps as planes through the origin).
 Thus, such fully-connected layers typically add a *bias* to each output node to turn the map into an affine map.
 This enables the model to respond zeroes in the input. Thus, the hidden layer as a whole has now both
-a weight matrix, and also a bias vector.
+a weight matrix, and also a bias vector. A linear mapping with a constant bias is commonly referred to as
+an *affine map*.
 
-The second issue is that our hidden layer's now-affine mapping is still linear, and one of our
+The second issue is that our hidden layer's now-affine mapping still scales linearly with the input, and one of our
 requirements for our approximation function was nonlinearity (a strict prerequisite for universality).
 Thus, we perform one final non-linear operation the result of the affine map.
 This is known as the *activation function*, and an infinite number of choices present itself here.
@@ -319,7 +326,7 @@ The rectifier is popular for having a number of desirable properties.
 
 1. Easy to compute
 2. Easy to differentiate (except at 0, which has not been found to be a problem in practice)
-3. Sparse activation, which aids in addressing model overfitting
+3. Sparse activation, which aids in addressing model overfitting and "unlearning" useful weights
 
 As our hidden layer units will use this rectifier just before emitting its final output to the next layer,
 our hidden units may be called *rectified linear units* or ReLUs for short.
@@ -328,8 +335,8 @@ Summarizing our hidden layer, the output of each unit in the layer can be writte
 
 $$a_i^{[1]} = \max(0, W_{i}^{[1]} \cdot \mathbf{x}^{[0]} + b_i^{[1]})$$
 
-It's common to refer to the final activated output of a neural network layer as $a$, and the result of the internal
-affine map $z$. Using this notation and considering the output of the hidden layer as a whole as a vector quantity, we can write:
+It's common to refer to the final activated output of a neural network layer as the vector $\mathbf{a}$, and the result of the internal
+affine map $\mathbf{z}$. Using this notation and considering the output of the hidden layer as a whole as a vector quantity, we can write:
 
 $$
 \begin{aligned}
