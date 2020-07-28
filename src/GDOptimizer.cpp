@@ -9,7 +9,6 @@ GDOptimizer::GDOptimizer(num_t eta)
 void GDOptimizer::train(Node& node)
 {
     size_t param_count = node.param_count();
-    // std::printf("%s Param count: %zu\n", node.name().c_str(), param_count);
     for (size_t i = 0; i != param_count; ++i)
     {
         num_t& param    = *node.param(i);

@@ -7,6 +7,7 @@ header-includes: |
   \usepackage{mathtools}
   \usepackage{amsthm}
   \usepackage{amssymb}
+  \usepackage{bm}
   \usetikzlibrary{positioning}
   \usetikzlibrary{arrows}
   \usetikzlibrary{shapes}
@@ -383,16 +384,29 @@ Next, we need a reliable way to improve the model based on the feedback provided
 This is known as function *optimization*, and most methods of model optimization are based on the principle of *gradient descent*.
 
 The idea is quite simple.
-Given a function with a set of parameters which we'll denote $\mathbf{\theta}$, the partial derivative of that function with respect to a
-given parameter $\theta_i \in \mathbf{\theta}$ tells us the overall *impact* of $\theta$ on the final result.
-In our model, we have many parameters. Each weight and bias constitutes an individually tunable parameter.
+Given a function with a set of parameters which we'll denote $\bm{\theta}$, the partial derivative of that function with respect to a
+given parameter $\theta_i \in \bm{\theta}$ tells us the overall *impact* of $\theta_i$ on the final result.
+In our model, we have many parameters; each weight and bias constitutes an individually tunable parameter.
 Thus, our strategy should be, given a set of input samples, compute the loss our model produces for each sample.
 Then, compute the partial derivatives of that loss with respect to *every parameter* in our model.
 Finally, adjust each parameter in proportion to its impact on the final loss.
-Proceeding in this fashion *guarantees* that the model will produce a smaller loss given the same inputs.
+Mathematically, this process is described below (note that the superscript $(i)$ is used to denote the $i$-th sample):
+
+$$
+\begin{aligned}
+\mathrm{Total~Loss} &= \sum_i J(\mathbf{x}^{(i)}; \bm\theta) \\
+\mathrm{Compute}~ &\sum_i \frac{\partial J(\mathbf{x}^{(i)})}{\partial \theta_j} ~\forall ~\theta_j \in \bm\theta \\
+\mathrm{Adjust}~ & \theta_j \rightarrow \theta_j - \eta \sum_i \frac{\partial J(\mathbf{x}^{(i)})}{\partial \theta_j} ~\forall ~\theta_j \in\bm\theta\\
+\end{aligned}
+$$
+
+Here, there is some flexibility in the choice of $\eta$, often referred to as the *learning rate*.
+A small $\eta$ promotes more conservative and accurate steps, but at the cost of our model being more costly to update.
+A large $\eta$ on the other hand results in larger updates to our model per training cycle, but may result in instability.
+Updating in the above fashion should adjust the model such that it will produce a smaller loss given the same inputs.
 
 In practice, the size of the input set may be very large, rendering it intractable to evaluate the model on every single
-training sample before adjusting parameters.
+training sample in the sum above before adjusting parameters.
 Thus, a common strategy is to use *stochastic gradient descent* (abbrev. SGD) and perform loss-gradient-based adjustments after
 evaluating smaller batches of samples. Concretely, the MNIST handwritten digits database contains 60,000 training samples.
 If we were to train our model using gradient descent in the strictest sense, we would execute the following pseudocode:
@@ -436,15 +450,15 @@ later, but for now, let's establish a few preliminary results.
 
 Recall that our choice of loss function was the categorical cross entropy function, reproduced below:
 
-$$J_{CE}(\mathbf{\hat{y}}, \mathbf{y}) = -\sum_{x\in X} y_x \log{\hat{y}_x}$$
+$$J_{CE}(\mathbf{\hat{y}}, \mathbf{y}) = -\sum_{i} y_i \log{\hat{y}_i}$$
 
-$X$ corresponds to set of possible outcomes (here, $X$ is the set of digits from 0 to 9).
-The quantities $y_x$ are the elements of the one-hot label corresponding to the correct outcome, and
-$\hat{\mathbf{y}}$ is the discrete probability distribution emitted by our model. We compute $\partial J_{CE}/\partial \hat{y}_x$ like so:
+The index $i$ is enumerated over the set of possible outcomes (i.e. the set of digits from 0 to 9).
+The quantities $y_i$ are the elements of the one-hot label corresponding to the correct outcome, and
+$\hat{\mathbf{y}}$ is the discrete probability distribution emitted by our model. We compute $\partial J_{CE}/\partial \hat{y}_i$ like so:
 
-$$\frac{\partial J_{CE}}{\partial \hat{y}_x} = -\frac{y_x}{\hat{y}_x}$$
+$$\frac{\partial J_{CE}}{\partial \hat{y}_i} = -\frac{y_i}{\hat{y}_i}$$
 
-Notice that for a one-hot vector, this partial derivative vanishes whenever $x$ corresponds to an incorrect outcome.
+Notice that for a one-hot vector, this partial derivative vanishes whenever $i$ corresponds to an incorrect outcome.
 
 Working backwards in our model, we next provide the partial derivative of the softmax function:
 
@@ -528,7 +542,7 @@ branches are viable approaches for learning.
 
 ### The Computational Graph
 
-The network wil will be constructing is purely sequential.
+The network we will be constructing is purely sequential.
 Inputs flow from left to right and the only connections made are between one layer and the layer immediately succeeding it.
 In reality, many production-grade neural networks specialized for computer vision, natural language processing,
 and other domains rely on architectures that are non-sequential.
@@ -537,7 +551,9 @@ neural networks, which have a cyclic topology (outputs of the model are fed back
 Thus, it's useful to think of the model as a whole as *computational graph*.
 While we won't be employing any complicated computational graph topologies here, we will still structure the
 code with this notion in mind. Each layer of our network will be modeled as a `Node` with data flowing forwards
-and backwards through the node during training. Here is the interface we'll use.
+and backwards through the node during training. Providing support for a fully general computational graph (i.e. non-sequential)
+is outside the scope of this tutorial, but some scaffolding will be provided should you want to extend it yourself
+in the future. For now, here is the interface we'll use:
 
 ```c++
 #include <cstdint>
@@ -619,21 +635,21 @@ We will need to implement this interface for each of the nodes shown in the diag
 \end{center}
 
 The first node (`MNIST`) will be responsible for acquiring new training samples and feeding it to the next layer for processing.
-In addition, it will provide an additional interface the final categorical cross-entropy loss node will use to query the correct label for that sample.
+In addition, it will provide an accessor that the final categorical cross-entropy loss node will use to query the correct label for that sample (the "label query").
 The hidden node will perform the affine transform and apply the linear rectification activation.
 The output node will also perform an affine transform, but will then apply the softmax function.
-In our project, the hidden and output nodes will share the same implementation that exposes a configurable activation function.
 Finally, the loss node will compute the loss of the predicted distribution based on the queried label for a given sample.
 
-In the figure above, solid arrow from left to right indicate data flow during the *feedforward* or *evaluation*
+In the figure above, solid arrows from left to right indicate data flow during the *feedforward* or *evaluation*
 portion of the model's execution. Each solid arrow corresponds to a data vector emitted by the source, and ingested
-by the destination. The dashed arrows from right to left indicate data flow during the *backpropagation* portion
-of the algorithm. These arrows correspond to gradient vectors of the evaluated loss with respect to the outputs.
+by the destination. The dashed arrows from right to left indicate data flow during the *backpropagation* or *reverse accumulation* portion
+of the algorithm.
+These arrows correspond to gradient vectors of the evaluated loss with respect to the outputs passed during the feedforward phase.
 For example, as seen above, the hidden node is expected to forward data to the output node ($\mathbf{a}^{[1]}$). Later, after the model
 prediction has been computed and the loss evaluated, the gradient of the loss with respect to those outputs is
 expected ($\partial J_{CE}/\partial a^{[1]}_i$ for each $a_i^{[1]}$ in $\mathbf{a}^{[1]}$).
 
-When simply evaluating data (without training), the final loss node will simply be omitted from the graph.
+When simply evaluating the model (without training), the final loss node will simply be omitted from the graph.
 In addition, no back-propagation of gradients will occur as the model parameters are ossified during evaluation.
 
 The model class interface shown below will be used to house all the nodes in the computational graph,
@@ -920,7 +936,7 @@ so we can be somewhat confident that our MNIST data ingestor is working properly
 remaining routine we need to implement is `MNIST::forward` which should consume the
 next sample, and forward the data to all subsequent nodes in the graph.
 
-```
+```cpp
 void MNIST::forward(num_t* data)
 {
     read_next();
@@ -1317,10 +1333,10 @@ Given that information, we need to perform the following tasks:
 4. Propagate all the loss gradients with respect to the inputs in step 3 back to the antecedent nodes
 
 As all outputs pass through an activation function, we will need
-to compute $\partial J_{CE}/\partial g_i$ where $g_i$ is one of the linear rectifier or softmax function
+to compute $\partial J_{CE}/\partial g(\mathbf{z})_i$ where $g$ is one of the linear rectifier or softmax function
 corresponding to a particular component of the output vector.
 Both derivatives are computed in the background section, so we'll just recite the results here.
-For the linear rectifier, $\partial J_{CE}/\partial g_i$ will simply be 1 if $a_i$ was positive,
+For the linear rectifier, $\partial J_{CE}/\partial g(\mathbf{z})_i$ will simply be 1 if $a_i \neq 0$,
 and 0 otherwise. The softmax gradient is slightly more involved, but because every output
 of the softmax contributes additively to the loss, we require a sum of gradients here:
 
@@ -1330,9 +1346,10 @@ $$\frac{\partial J_{CE}}{\partial \mathrm{softmax}(\mathbf{z})_i} = \frac{\parti
 \end{cases}$$
 
 The factor $\partial J_{CE}/\partial a_i$ comes from the chain rule and is passed in from the subsequent node.
-These intermediate expressions are computed and stored in `activation_gradients_` in the top portion
+These intermediate expressions are computed, scaled by $\partial a_i/\partial z_i$, and then stored in `activation_gradients_` in the top portion
 of `FFNode::reverse`.
-Because the loss gradients all have a functional dependence on the activation function
+Equivalently by the chain rule, we are caching in `activation_gradients_` $\partial J_{CE}/\partial z_i$ for each $i$.
+Because the loss gradients with respect to every parameter and input have a functional dependence on the activation function
 gradients, all results computed in tasks 1 through 4 above will depend on `activation_gradients_`.
 
 #### Computing bias gradients
@@ -1340,9 +1357,9 @@ gradients, all results computed in tasks 1 through 4 above will depend on `activ
 The bias gradients are the easiest to compute due to how they show up in the expression.
 Since a node's output is given as
 
-$$a_i = f\left(\mathbf{W}_i \cdot \mathbf{x} + b_i = z_i\right)$$
+$$a_i = g\left(\mathbf{W}_i \cdot \mathbf{x} + b_i = z_i\right)$$
 
-the derivative with respect to $b_i$ is just
+for some activation function $g$, the derivative with respect to $b_i$ is just
 
 $$
 \begin{aligned}
@@ -1459,7 +1476,7 @@ to provide a starting point for futher experimentation.
 
 ### The Categorical Cross-Entropy Loss Node
 
-The last node we need to author is the node which computes the categorical cross-entropy of the prediction.
+The last node we need to implement is the node which computes the categorical cross-entropy of the prediction.
 A possible class definition for such this node is shown below:
 
 ```c++
@@ -1526,7 +1543,7 @@ $$J_{CE}(\hat{\mathbf{y}}, \mathbf{y}) = -\sum_j y_j \log{\left(\max(\hat{y}_j, 
 
 $J$ is the common symbol ascribed to the cost or objective function, while $\hat{y}$ and $y$ refer
 to the predicted distribution and correct distribution respectively.
-In addition, clamp the argument of the logarithm with a small $\epsilon$
+In addition, the argument of the logarithm is clamped with a small $\epsilon$
 to avoid a numerical singularity. The implementation is as follows:
 
 ```c++
@@ -1578,7 +1595,7 @@ fairly straightforward.
 $$
 \begin{aligned}
 \frac{\partial J_{CE}}{\partial{\hat{y}_i}} &= \frac{\partial \left(-\sum_j y_j\log{\left(\max(\hat{y}_j, \epsilon)\right)}\right)}{\partial \hat{y}_i} \\
-&= -\frac{y_i}{\max(\hat{y}_i, 0)}
+&= -\frac{y_i}{\max(\hat{y}_i, \epsilon)}
 \end{aligned}
 $$
 
@@ -1636,15 +1653,17 @@ This is an elegant result! Essentially, the gradient of a the loss with respect 
 probability $p(x)$ is simply $p(x)$ if $x$ was not the correct label, and $p(x) - 1$ if it was.
 Considering the effect of gradient descent, this should check out with our intuition. The optimizer
 seeks to suppress probabilities predicted that should have been 0, and increase probabilities predicted
-that should have been 1.
+that should have been 1. Check for yourself that after gradient descent is performed, the gradients
+derived here will nudge the model in the appropriate direction.
 
 This sort of optimization highlights an important observation about backpropagation,
-namely, that they do not guarantee any sort of optimality beyond a worst-case performance ceiling.
+namely, that backpropagation does not guarantee any sort of optimality beyond a worst-case performance ceiling.
 Several production neural networks have architectures that employ heuristics to identify optimizations
 such as this one, but the problem of generating a perfect computational strategy is NP and so not
 covered here. The code provided here will remain in the general form, despite being slower in the
 interest of maintaining generality and not adding complexity, but you are encouraged to consider
-abstractions to permit this type of optimization in your own architecture.
+abstractions to permit this type of optimization in your own architecture (a useful keyword to
+aid your research is *common subexpression elimination* or *CSE* for short).
 
 The last thing we need to provide for `CCELossNode` are a few helper routines:
 
@@ -1672,7 +1691,7 @@ void CCELossNode::reset_score()
 }
 ```
 
-These routines let us examine the progress of our network during training in terms
+These routines let us observe the performance of our network during training in terms
 of both loss and accuracy.
 
 ### Gradient Descent Optimizer
@@ -1702,7 +1721,6 @@ private:
 void GDOptimizer::train(Node& node)
 {
     size_t param_count = node.param_count();
-    // std::printf("%s Param count: %zu\n", node.name().c_str(), param_count);
     for (size_t i = 0; i != param_count; ++i)
     {
         num_t& param    = *node.param(i);
@@ -1827,12 +1845,19 @@ Avg Loss: 0.292608	91.009998% correct
 
 As you can see, the accuracy dropped on the test data relative to the training data. This
 is a hallmark characterstic of *overfitting*, which is to be expected given that we
-haven't implemented any regularization whatsoever!
+haven't implemented any regularization whatsoever! That said, 91% accuracy isn't all that bad
+when we consider the fact that our model has no notion of pixel-adjacency whatsoever. For
+image data, convolutional networks are a far more apt architecture than the one chosen for
+this demonstration.
 
 ### Regularization
 
-The dimensionality of our model will often be much higher than needed to optimally make
-accurate predictions. Thus, the likelihood of overfitting increases as more training
+Regularization will not be implemented as part of this self-contained neural network, but
+it is such a fundamental part of most deep learning frameworks that we'll discuss it here.
+
+Often, the dimensionality of our model will be much higher than what is stricly needed to make
+accurate predictions. This stems from the fact that we seldom no a priori how many features
+are needed for the model to be successful. Thus, the likelihood of overfitting increases as more training
 data is fed into the model. The primary tool to combat overfitting is *regularization*.
 Loosely speaking, regularization is any strategy employed to restrict the hypothesis
 space of fit-functions the model can occcupy to prevent overfitting.
@@ -1873,12 +1898,9 @@ which increased magnitude corresponds with more complex models. Bias parameters 
 offsets, regardless of their value and do not scale the inputs. Thus, attempting to regularize them
 will likely increase *both* training and test error.
 
-While regularization is a fundamental part of any deep learning framework, its implementation will
-not be shown here explicitly.
-
 ## Where to go from here
 
-At this point, the *toy* network is complete. With any luck, you've taken away a few key patterns
+At this point, our toy network is complete. With any luck, you've taken away a few key patterns
 that will aid in both your intuition about how deep learning techniques work, and your efforts
 to actually implement them. The implementation presented here is both far from complete, and
 far from ideal. Critically missing is adequate visualization for the error rate as a function of
@@ -1923,4 +1945,3 @@ in this case with an emphasis on object detection.
 |*Standard notations for Deep Learning* ([link](https://cs230.stanford.edu/files/Notation.pdf))|Stanford CS230 Course Notes|Cheatsheet covering standard notation used by many texts and papers|
 |*Neural Networks and Deep Learning* ([link](http://neuralnetworksanddeeplearning.com/index.html))|Michael Nielsen|A gentler introduction to the theory and practice of neural networks|
 |*Automatic Differentiation in Machine Learning: a Survey* ([link](https://arxiv.org/pdf/1502.05767.pdf))|Atılım Güneş Baydin, Barak A. Pearlmutter, Alexey Andreyevich Radul, Jeffrey Mark Siskind|Excellent survey paper documentating the various algorithms used for computational differentiation including viable alternatives to backpropagation|
-
