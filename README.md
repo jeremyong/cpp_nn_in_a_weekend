@@ -2,6 +2,8 @@
 
 This repository is the companion code the article "Neural Network in a Weekend." Readers are welcome to clone the repository or use the code herein as a reference if following along the article. Pull requests and issues filed for errors and bugs in both code and/or documentation are welcome and appreciated. However, pull requests that introduce new features are unlikely to be considered, as the ultimate goal of this code is to be tractable for a newer practitioner getting started with deep learning architectures.
 
+[Article pdf link](https://github.com/jeremyong/cpp_nn_in_a_weekend/raw/master/doc/DOC.pdf)
+
 ## Compilation and Usage
 
     mkdir build
@@ -30,7 +32,7 @@ The fully-connected feedforward node in this example is implemented as `FFNode` 
 
 ## Data
 
-For your convenient, the MNIST data used to train and test the network is provided uncompressed in the `data/` subdirectory. The data is structured like so:
+For your convenience, the MNIST data used to train and test the network is provided uncompressed in the `data/` subdirectory. The data is structured like so:
 
 ### Images
 
