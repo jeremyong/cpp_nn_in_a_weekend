@@ -32,7 +32,7 @@ MNIST::MNIST(Model& model, std::ifstream& images, std::ifstream& labels)
     read_be(labels, &labels_magic);
     if (labels_magic != 2049)
     {
-        throw std::runtime_error{"Images file appears to be malformed"};
+        throw std::runtime_error{"Labels file appears to be malformed"};
     }
 
     uint32_t label_count;
