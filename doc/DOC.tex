@@ -1098,7 +1098,7 @@ descriptors is produced below:
 \NormalTok{    read\_be(labels, \&labels\_magic);}
     \ControlFlowTok{if}\NormalTok{ (labels\_magic != }\DecValTok{2049}\NormalTok{)}
 \NormalTok{    \{}
-        \ControlFlowTok{throw} \BuiltInTok{std::}\NormalTok{runtime\_error\{}\StringTok{"Images file appears to be malformed"}\NormalTok{\};}
+        \ControlFlowTok{throw} \BuiltInTok{std::}\NormalTok{runtime\_error\{}\StringTok{"Labels file appears to be malformed"}\NormalTok{\};}
 \NormalTok{    \}}
 
     \DataTypeTok{uint32\_t}\NormalTok{ label\_count;}

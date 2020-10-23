@@ -451,7 +451,7 @@ z &amp; z &gt; 0
 <span id="cb7-16"><a href="#cb7-16" aria-hidden="true"></a>    read_be(labels, &amp;labels_magic);</span>
 <span id="cb7-17"><a href="#cb7-17" aria-hidden="true"></a>    <span class="cf">if</span> (labels_magic != <span class="dv">2049</span>)</span>
 <span id="cb7-18"><a href="#cb7-18" aria-hidden="true"></a>    {</span>
-<span id="cb7-19"><a href="#cb7-19" aria-hidden="true"></a>        <span class="cf">throw</span> <span class="bu">std::</span>runtime_error{<span class="st">&quot;Images file appears to be malformed&quot;</span>};</span>
+<span id="cb7-19"><a href="#cb7-19" aria-hidden="true"></a>        <span class="cf">throw</span> <span class="bu">std::</span>runtime_error{<span class="st">&quot;Labels file appears to be malformed&quot;</span>};</span>
 <span id="cb7-20"><a href="#cb7-20" aria-hidden="true"></a>    }</span>
 <span id="cb7-21"><a href="#cb7-21" aria-hidden="true"></a></span>
 <span id="cb7-22"><a href="#cb7-22" aria-hidden="true"></a>    <span class="dt">uint32_t</span> label_count;</span>
