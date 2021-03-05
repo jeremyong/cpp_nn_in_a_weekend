@@ -1,6 +1,6 @@
 # C++ Neural Network in a Weekend
 
-This repository is the companion code the article "Neural Network in a Weekend." Readers are welcome to clone the repository or use the code herein as a reference if following along the article. Pull requests and issues filed for errors and bugs in both code and/or documentation are welcome and appreciated. However, pull requests that introduce new features are unlikely to be considered, as the ultimate goal of this code is to be tractable for a newer practitioner getting started with deep learning architectures.
+This repository is the companion code to the article "Neural Network in a Weekend." Readers are welcome to clone the repository and use the code herein as a reference if following along the article. Pull requests and issues filed for errors and bugs in both code and/or documentation are welcome and appreciated. However, pull requests that introduce new features are unlikely to be considered, as the ultimate goal of this code is to be tractable for a newer practitioner getting started with deep learning architectures.
 
 [Article pdf link](https://github.com/jeremyong/cpp_nn_in_a_weekend/raw/master/doc/DOC.pdf)
 
