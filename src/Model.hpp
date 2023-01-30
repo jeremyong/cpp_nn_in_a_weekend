@@ -27,6 +27,7 @@ class Node
 {
 public:
     Node(Model& model, std::string name);
+    virtual ~Node(){};
 
     // Initialize the parameters of the node with a provided random number
     // engine.
