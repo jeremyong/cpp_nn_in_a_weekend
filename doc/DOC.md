@@ -46,7 +46,7 @@ At a high level, we need to perform the following tasks:
 2. Second, we need a way to quantify the degree to which our model is performing poorly against a known set of correct answers. This is typically denoted as the *loss* or *objective* function of the model.
 3. Third, we need an *optimization strategy* which will describe how to adjust the model after feedback is provided regarding the model's performance as per the loss function described above.
 4. Fourth, we need a *regularization strategy* to address inadvertently tuning the model with a high degree of specificity to our training data, at the cost of generalized performance when handling inputs not yet encountered.
-5. Fifth, we need an *architecture* for our model, including how inputs are transformed into outputs and an enumaration of all the adjustable parameters the model supports.
+5. Fifth, we need an *architecture* for our model, including how inputs are transformed into outputs and an enumeration of all the adjustable parameters the model supports.
 6. Finally, we need a robust *implementation* that executes the above within memory and execution budgets, accounting for floating-point stability, reproducibility, and a number of other engineering-related matters.
 
 *Deep learning* is distinct from other machine learning models in that the architecture is heavily over-parameterized and based on simpler *building blocks* as opposed to bespoke components.
